@@ -46,6 +46,103 @@ npm run dev
 在瀏覽器中打開 `http://localhost:5173` 即可使用！
 ---
 
+## 👥 協作指南
+
+### 第一次下載專案
+
+```bash
+# 使用 HTTPS（推薦）
+git clone https://github.com/XintiWu/DB-Project.git
+cd DB-Project
+
+# 安裝依賴
+npm install
+
+# 啟動開發伺服器
+npm run dev
+```
+
+### 成為協作者
+
+1. 請專案負責人在 GitHub 上添加你為協作者：
+   - 進入專案頁面 → Settings → Collaborators → Add people
+2. 接受邀請後，即可推送程式碼到倉庫
+
+### 日常協作流程
+
+#### 方式一：直接在 main 分支工作（適合小團隊）
+
+```bash
+# 1. 每次開始工作前，先拉取最新程式碼
+git pull origin main
+
+# 2. 進行開發和編輯...
+
+# 3. 完成後提交更改
+git add .
+git commit -m "描述你的改動內容"
+git push origin main
+```
+
+#### 方式二：使用分支協作（推薦，避免衝突）
+
+```bash
+# 1. 拉取最新程式碼
+git pull origin main
+
+# 2. 創建自己的工作分支（分支名稱要有意義，如：feature/login-page）
+git checkout -b feature/你的功能名稱
+
+# 3. 進行開發和提交...
+git add .
+git commit -m "新增登入頁面功能"
+
+# 4. 推送分支到 GitHub
+git push origin feature/你的功能名稱
+
+# 5. 在 GitHub 上創建 Pull Request（PR）
+#    進入專案頁面 → Pull requests → New pull request
+#    選擇你的分支 → 填寫說明 → Create pull request
+
+# 6. 等負責人審查並合併後，切回 main 分支
+git checkout main
+git pull origin main  # 拉取合併後的最新程式碼
+```
+
+### 常見協作指令
+
+```bash
+# 查看目前狀態
+git status
+
+# 查看遠端倉庫連接（git clone 後會自動設置）
+git remote -v
+
+# 查看所有分支
+git branch -a
+
+# 切換分支
+git checkout 分支名稱
+
+# 查看提交歷史
+git log --oneline
+
+# 如果有衝突，解決後再提交
+git add .
+git commit -m "解決衝突"
+git push origin 分支名稱
+```
+
+### 協作注意事項
+
+1. ⚠️ **推送前先拉取**：避免覆蓋別人的更改
+2. ✅ **提交訊息要清楚**：讓隊友知道你在做什麼
+3. 🔀 **有衝突時先溝通**：遇到合併衝突時，先跟隊友討論
+4. 🌿 **重要功能用分支**：避免直接改 main 分支
+5. 🔄 **定期同步**：每天開始工作前先 `git pull`
+
+---
+
 ## 📖 使用說明
 
 ### 🦸‍♂️ 志工模式（提供協助）
