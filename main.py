@@ -1,10 +1,6 @@
-import sys
-import os
-
-# ⭐️ 調整系統路徑：將 backend/ (父目錄) 加入到搜尋路徑中
-# 這樣 Python 就能找到 src/
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+from flask import Flask, jsonify
+from flask_cors import CORS
+# ⭐️ 導入我們定義好的資料庫操作函式
 from src.database.db_connector import get_all_users_from_db
 
 app = Flask(__name__)
@@ -33,7 +29,9 @@ def list_users():
       "message": "無法取得使用者資料或資料庫連線錯誤"
     }), 500
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
   print(f"Flask Server running on http://localhost:{PORT}")
   app.run(debug=True, port=PORT)
+  with app.test_client() as client:
+        response = client.get("/users")
+        print(response.json)

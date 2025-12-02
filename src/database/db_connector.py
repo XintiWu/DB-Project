@@ -21,7 +21,7 @@ def get_all_users_from_db():
     with connection.cursor() as cursor:
       # 撰寫 SQL 查詢語句
       # 假設你的 users 表格有 id, username, email 欄位
-      sql = " " # REPLACE THIS!!!!!!
+      sql = 'SELECT "user_id", "name" FROM "USERS"' # REPLACE THIS!!!!!!
 
       # 執行查詢
       cursor.execute(sql)

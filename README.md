@@ -1,3 +1,8 @@
+# Backend Documentation
+ > !pip3 install pytest
+#### diagnose files in \test
+> python -m pytest
+
 # 🪏 鏟子超人 - 災害資訊整合平台
 
 > 災害發生時，讓需要幫助的人找到資源，讓想幫助的人找到需求
