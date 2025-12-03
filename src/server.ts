@@ -1,5 +1,6 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import cors from 'cors';
+import type { Request, Response } from 'express';
 
 const app = express();
 const PORT = 3000; // 後端服務器通常運行在 3000 埠號
