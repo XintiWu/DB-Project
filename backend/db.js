@@ -13,3 +13,4 @@ export const pool = new Pool({
   password: process.env.DB_PASSWORD || 'postgresql',  // 從環境變數讀取，預設為空
   port: parseInt(process.env.DB_PORT || '5433'),
 });
+
