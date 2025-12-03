@@ -14,8 +14,8 @@ export const createIncident = async (data) => {
     const sql = `
       INSERT INTO "INCIDENTS" 
       (title, type, severity, area_id, reporter_id, address, status, msg, latitude, longitude)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-      RETURNING *;
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      RETURNING *, reported_at as created_at;
     `;
 
     const values = [
@@ -48,7 +48,7 @@ export const updateIncident = async (data) => {
       SET title = $1, type = $2, severity = $3, area_id = $4, 
           address = $5, status = $6, msg = $7, latitude = $8, longitude = $9
       WHERE incident_id = $10
-      RETURNING *;
+      RETURNING *, reported_at as created_at;
     `;
     
     const values = [
@@ -90,7 +90,7 @@ export const searchIncidentsByAreaId = async (data) => {
   const { area_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "INCIDENTS" WHERE area_id = $1';
+    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE area_id = $1';
     const { rows } = await pool.query(sql, [area_id]);
     
     return rows; //Incident list
@@ -108,7 +108,7 @@ export const searchIncidentsByReporterId = async (data) => {
   const { reporter_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "INCIDENTS" WHERE reporter_id = $1';
+    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE reporter_id = $1';
     const { rows } = await pool.query(sql, [reporter_id]);
     
     return rows; //Incident list
@@ -125,7 +125,7 @@ export const searchIncidentsByReporterId = async (data) => {
  */
 export const getAllIncidents = async () => {
   try {
-    const sql = 'SELECT * FROM "INCIDENTS" ORDER BY created_at DESC';
+    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" ORDER BY reported_at DESC';
     const { rows } = await pool.query(sql);
     return rows;
   } catch (error) {
@@ -139,7 +139,7 @@ export const getAllIncidents = async () => {
  */
 export const getIncidentById = async (id) => {
   try {
-    const sql = 'SELECT * FROM "INCIDENTS" WHERE incident_id = $1';
+    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE incident_id = $1';
     const { rows } = await pool.query(sql, [id]);
     return rows[0];
   } catch (error) {

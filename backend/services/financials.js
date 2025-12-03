@@ -17,7 +17,7 @@ export const createTransaction = async (data) => {
       INSERT INTO "FINANCIALS" 
       (source, amount, currency, purpose, admin_id)
       VALUES ($1, $2, $3, $4, $5)
-      RETURNING *;
+      RETURNING *, amount::numeric;
     `;
     
     const values = [source, amount, currency, purpose, admin_id];
@@ -48,7 +48,7 @@ export const updateTransaction = async (data) => {
       UPDATE "FINANCIALS"
       SET source = $1, amount = $2, currency = $3, purpose = $4
       WHERE txn_id = $5
-      RETURNING *;
+      RETURNING *, amount::numeric;
     `;
 
     const values = [source, amount, currency, purpose, txn_id];
@@ -87,7 +87,7 @@ export const getTransactionById = async (data) => {
   const { txn_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "FINANCIALS" WHERE txn_id = $1';
+    const sql = 'SELECT *, amount::numeric FROM "FINANCIALS" WHERE txn_id = $1';
     const { rows } = await pool.query(sql, [txn_id]);
     
     return rows[0];
@@ -105,7 +105,7 @@ export const getTransactionsByAdminId = async (data) => {
   const { admin_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "FINANCIALS" WHERE admin_id = $1 ORDER BY created_at DESC';
+    const sql = 'SELECT *, amount::numeric FROM "FINANCIALS" WHERE admin_id = $1 ORDER BY created_at DESC';
     const { rows } = await pool.query(sql, [admin_id]);
     
     return rows;
@@ -121,7 +121,7 @@ export const getTransactionsByAdminId = async (data) => {
  */
 export const getAllTransactions = async () => {
   try {
-    const sql = 'SELECT * FROM "FINANCIALS" ORDER BY created_at DESC';
+    const sql = 'SELECT *, amount::numeric FROM "FINANCIALS" ORDER BY created_at DESC';
     const { rows } = await pool.query(sql);
     
     return rows;

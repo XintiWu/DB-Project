@@ -1,8 +1,46 @@
 import { pool } from '../db.js';
 
+const BASE_QUERY = `
+  SELECT 
+    r.*,
+    (
+      SELECT json_agg(json_build_object(
+        'item_id', rm.item_id,
+        'item_name', i.item_name,
+        'qty', rm.qty,
+        'unit', i.unit,
+        'category', ic.category_name
+      ))
+      FROM "REQUEST_MATERIALS" rm
+      JOIN "ITEMS" i ON rm.item_id = i.item_id
+      LEFT JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+      WHERE rm.request_id = r.request_id
+    ) AS material_items,
+    (
+      SELECT json_agg(json_build_object(
+        'skill_tag_id', rh.skill_tag_id,
+        'skill_name', st.skill_tag_name,
+        'qty', rh.qty
+      ))
+      FROM "REQUEST_HUMANPOWER" rh
+      JOIN "SKILL_TAGS" st ON rh.skill_tag_id = st.skill_tag_id
+      WHERE rh.request_id = r.request_id
+    ) AS required_skills,
+    (
+      SELECT json_agg(json_build_object(
+        'equipment_id', re.required_equipment,
+        'equipment_name', i.item_name,
+        'qty', re.qty
+      ))
+      FROM "REQUEST_EQUIPMENTS" re
+      JOIN "ITEMS" i ON re.required_equipment = i.item_id
+      WHERE re.request_id = r.request_id
+    ) AS required_equipments
+  FROM "REQUESTS" r
+`;
+
 /**
  * Create a new request with type-specific details
- * Supports 'item' and 'rescue' types
  */
 export const createRequest = async (data) => {
   const { 
@@ -11,78 +49,85 @@ export const createRequest = async (data) => {
     // Type-specific data fields:
     items,       // Array of { item_id, qty } for 'item' type
     headcount,   // Integer for 'rescue' type
-    skills,      // "Array" of skill_tags (IDs) for 'rescue' type
-    equipments   // "Array" of { required_equipment, qty } for 'rescue' type
+    skills,      // Array of skill_tags (IDs) for 'rescue' type
+    equipments   // Array of { required_equipment, qty } for 'rescue' type
   } = data;
 
-  // We must use a client for transactions
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
+    // Calculate required_qty based on inputs
+    let requiredQty = 0;
+    if (items && items.length > 0) {
+      requiredQty = items.reduce((acc, item) => acc + (item.qty || 0), 0);
+    } else if (headcount) {
+      requiredQty = headcount;
+    } else if (skills && skills.length > 0) {
+      // If skills is array of IDs, we assume qty 1 per skill? Or skills object has qty?
+      // Frontend sends array of IDs usually. Let's assume 1 per skill if simple array.
+      // But parseNeed expects { quantity }.
+      // Let's assume input 'skills' is array of { skill_tag_id, qty } or just IDs.
+      // For now, use headcount if available, else 0.
+      requiredQty = headcount || 0;
+    }
+
     // 1. Insert into base REQUESTS table
     const insertRequestSql = `
       INSERT INTO "REQUESTS" 
-      (requester_id, incident_id, status, urgency, type, address, latitude, longitude)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      (requester_id, incident_id, status, urgency, type, address, latitude, longitude, required_qty, current_qty)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)
       RETURNING request_id, created_at;
     `;
     
     const requestValues = [
       requester_id, incident_id, status, urgency, type, 
-      address, latitude, longitude
+      address, latitude, longitude, requiredQty
     ];
     
     const requestResult = await client.query(insertRequestSql, requestValues);
     const newRequest = requestResult.rows[0];
     const newRequestId = newRequest.request_id;
 
-    // 2. Handle 'item' type logic
-    if (type === 'item' && items && items.length > 0) {
+    // 2. Handle 'item' type logic (Material)
+    if ((type === 'Material' || type === 'item' || type === 'material') && items && items.length > 0) {
       const insertItemSql = `
-        INSERT INTO "REQUEST_ITEMS" (request_id, item_id, qty)
+        INSERT INTO "REQUEST_MATERIALS" (request_id, item_id, qty)
         VALUES ($1, $2, $3)
       `;
-      
-      // Loop through items and insert each
       for (const item of items) {
         await client.query(insertItemSql, [newRequestId, item.item_id, item.qty]);
       }
     }
 
-    // 3. Handle 'rescue' type logic
-    else if (type === 'rescue') {
-      // 3a. Insert into RESCUE_REQUEST (Headcount)
-      if (headcount !== undefined) {
-        const insertRescueSql = `
-          INSERT INTO "RESCUE_REQUEST" (request_id, headcount)
-          VALUES ($1, $2)
-        `;
-        await client.query(insertRescueSql, [newRequestId, headcount]);
-      }
-
-      // 3b. Insert into RESCUE_SKILLS
+    // 3. Handle 'rescue' type logic (Humanpower / Tool)
+    else if (type === 'Humanpower' || type === 'rescue' || type === 'manpower' || type === 'Tool' || type === 'tool') {
+      
+      // 3a. Insert into REQUEST_HUMANPOWER
       if (skills && skills.length > 0) {
         const insertSkillSql = `
-          INSERT INTO "RESCUE_SKILLS" (request_id, skill_tag_id)
-          VALUES ($1, $2)
+          INSERT INTO "REQUEST_HUMANPOWER" (request_id, skill_tag_id, qty)
+          VALUES ($1, $2, $3)
         `;
-        for (const skillTag of skills) {
-          await client.query(insertSkillSql, [newRequestId, skillTag]);
+        // Check if skills are objects or IDs
+        for (const skill of skills) {
+          const skillId = typeof skill === 'object' ? skill.skill_tag_id : skill;
+          const qty = typeof skill === 'object' ? (skill.qty || 1) : 1;
+          await client.query(insertSkillSql, [newRequestId, skillId, qty]);
         }
       }
 
-      // 3c. Insert into RESCUE_EQUIPMENTS
+      // 3b. Insert into REQUEST_EQUIPMENTS
       if (equipments && equipments.length > 0) {
         const insertEquipSql = `
-          INSERT INTO "RESCUE_EQUIPMENTS" (request_id, required_equipment, qty)
+          INSERT INTO "REQUEST_EQUIPMENTS" (request_id, required_equipment, qty)
           VALUES ($1, $2, $3)
         `;
         for (const equip of equipments) {
           await client.query(insertEquipSql, [
             newRequestId, 
-            equip.required_equipment, // assuming this is the ID/Name
+            equip.required_equipment, 
             equip.qty
           ]);
         }
@@ -102,7 +147,7 @@ export const createRequest = async (data) => {
 };
 
 /**
- * Update general request info (e.g., user updates their request)
+ * Update general request info
  */
 export const updateRequestInfo = async (data) => {
   const { 
@@ -129,8 +174,7 @@ export const updateRequestInfo = async (data) => {
 };
 
 /**
- * Process/Review a request (Admin action)
- * Updates review fields: reviewed_at, reviewer_id, review_status, review_note
+ * Process/Review a request
  */
 export const reviewRequest = async (data) => {
   const { request_id, reviewer_id, review_status, review_note } = data;
@@ -177,7 +221,7 @@ export const getRequestById = async (data) => {
   const { request_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "REQUESTS" WHERE request_id = $1';
+    const sql = `${BASE_QUERY} WHERE r.request_id = $1`;
     const { rows } = await pool.query(sql, [request_id]);
     
     return rows[0];
@@ -189,13 +233,13 @@ export const getRequestById = async (data) => {
 };
 
 /**
- * Get requests by Requester ID (My Requests)
+ * Get requests by Requester ID
  */
 export const getRequestsByRequesterId = async (data) => {
   const { requester_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "REQUESTS" WHERE requester_id = $1 ORDER BY request_date DESC';
+    const sql = `${BASE_QUERY} WHERE r.requester_id = $1 ORDER BY r.created_at DESC`;
     const { rows } = await pool.query(sql, [requester_id]);
     
     return rows;
@@ -207,13 +251,13 @@ export const getRequestsByRequesterId = async (data) => {
 };
 
 /**
- * Get requests associated with a specific incident
+ * Get requests by Incident ID
  */
 export const getRequestsByIncidentId = async (data) => {
   const { incident_id } = data;
 
   try {
-    const sql = 'SELECT * FROM "REQUESTS" WHERE incident_id = $1';
+    const sql = `${BASE_QUERY} WHERE r.incident_id = $1 ORDER BY r.created_at DESC`;
     const { rows } = await pool.query(sql, [incident_id]);
     
     return rows;
@@ -225,11 +269,11 @@ export const getRequestsByIncidentId = async (data) => {
 };
 
 /**
- * Get all pending requests (for Admin Dashboard)
+ * Get all pending requests
  */
 export const getAllUnverifiedRequests = async () => {
   try {
-    const sql = 'SELECT * FROM "REQUESTS" WHERE review_status IS NULL OR review_status = \'Unverified\' ORDER BY request_date ASC';
+    const sql = `${BASE_QUERY} WHERE r.review_status IS NULL OR r.review_status = 'Unverified' ORDER BY r.created_at ASC`;
     const { rows } = await pool.query(sql);
     
     return rows;
@@ -245,7 +289,7 @@ export const getAllUnverifiedRequests = async () => {
  */
 export const getAllRequests = async () => {
     try {
-      const sql = 'SELECT * FROM "REQUESTS" ORDER BY request_date DESC';
+      const sql = `${BASE_QUERY} ORDER BY r.created_at DESC`;
       const { rows } = await pool.query(sql);
       return rows;
     } catch (error) {
