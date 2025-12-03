@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { useNeedData } from '../hooks/useNeedData'
+import { useShelterData } from '../hooks/useShelterData'
 import { HeroSection } from '../components/HeroSection'
 import { HomeDashboard } from '../components/HomeDashboard'
 import { HomeNeedCard } from '../components/HomeNeedCard'
+import { ShelterCard } from '../components/ShelterCard'
 import { Button } from '../components/ui/button'
 import { useNavigate } from 'react-router-dom'
 import { useClaimContext } from '../context/ClaimContext'
 
 export function HomePage() {
   const { needs, loading, error } = useNeedData()
+  const { shelters, loading: sheltersLoading } = useShelterData()
   const { getTotalItems } = useClaimContext()
   const navigate = useNavigate()
   const [showMoreNeeds, setShowMoreNeeds] = useState(false)
@@ -160,6 +163,56 @@ export function HomePage() {
         </div>
       )}
 
+      {/* 附近避難所 */}
+      <div className="bg-slate-50 dark:bg-slate-900 py-12">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-3">
+              🏠 附近避難所
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400">
+              即時查看避難所容納狀況，尋找最近的安全地點
+            </p>
+          </div>
+
+          {sheltersLoading ? (
+            <div className="text-center py-8">
+              <p className="text-slate-600 dark:text-slate-400">載入避難所資訊中...</p>
+            </div>
+          ) : shelters.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {shelters.slice(0, 6).map(shelter => (
+                  <ShelterCard 
+                    key={shelter.shelter_id}
+                    name={shelter.name}
+                    location={shelter.location}
+                    capacity={shelter.capacity}
+                    current_occupancy={shelter.current_occupancy}
+                    contact_phone={shelter.contact_phone}
+                  />
+                ))}
+              </div>
+              
+              {shelters.length > 6 && (
+                <div className="text-center">
+                  <Button 
+                    variant="outline"
+                    size="lg"
+                    onClick={() => alert('避難所列表頁面即將推出！')}
+                  >
+                    查看全部 {shelters.length} 個避難所 →
+                  </Button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-slate-600 dark:text-slate-400">目前沒有避難所資訊</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* 使用說明 */}
       <div className="bg-slate-50 dark:bg-slate-900 py-12">
