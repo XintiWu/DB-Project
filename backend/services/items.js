@@ -6,7 +6,8 @@ import { pool } from '../db.js';
 export const createItem = async (data) => {
   const { 
     item_name, category_id, unit, // ITEMS 
-    is_tool, conditions, manufacturer, model // ITEM_TOOLS 
+    is_tool, conditions, manufacturer, model, // ITEM_TOOLS 
+    expires_in // ITEM_SUPPLIES
   } = data;
 
   // 1. FETCH CLIENT FROM POOL
@@ -32,6 +33,13 @@ export const createItem = async (data) => {
         VALUES ($1, $2, $3, $4);
       `;
       await client.query(insertToolSql, [newItemId, conditions, manufacturer, model]);
+    }
+    else{
+        const insertToolSql = `
+        INSERT INTO "ITEM_SUPPLIES" (item_id, expires_in)
+        VALUES ($1, $2);
+      `;
+      await client.query(insertToolSql, [newItemId, expires_in]);
     }
 
     // 5. COMMIT
