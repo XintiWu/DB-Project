@@ -24,24 +24,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Get All (Admin Unverified) or Filtered?
-// Base controller was getAll -> SELECT * FROM REQUESTS
-// Service has getAllUnverifiedRequests, getRequestsByRequesterId, etc.
-// Let's keep a generic getAll if needed, or map to specific service functions?
-// For now, let's implement a generic getAll using the pool directly or add getAll to service?
-// The service doesn't have a simple "getAll". It has "getAllUnverifiedRequests".
-// Let's add "getAllRequests" to service or just use pool here? 
-// Better to add to service to keep consistency.
-// But for now, I will map to what exists. 
-// If I replace the whole file, I lose the generic getAll.
-// Let's assume the user wants the complex logic.
-// I will add a getAllRequests to the service in a separate step if needed.
-// For now, I'll use getAllUnverifiedRequests for "/" GET? Or maybe just keep generic controller for simple GETs?
-// But I can't mix easily if I replace the whole file.
-// Let's stick to what the service provides. 
-// If the service is missing a generic getAll, I should add it.
-
-// Let's add getAllRequests to service first.
+// getAllRequests
 router.get("/", async (req, res) => {
     try {
         // If query params exist, maybe filter?
