@@ -1,31 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Need, MaterialNeed, RescueNeed } from '../lib/types'
-import { parseCSV } from '../lib/utils'
-
-interface RawNeedData {
-  id: string
-  needType: string
-  title: string
-  location: string
-  region: string
-  category: string
-  itemName: string
-  requiredQuantity: string
-  currentQuantity: string
-  unit: string
-  severity: string
-  deadline: string
-  timeSlots: string
-  requiredSkills: string
-  providedSupport: string
-  description: string
-  publisherName: string
-  contactPhone: string
-  contactEmail: string
-  status: string
-  createdAt: string
-  managementKey: string
-}
+import { getAllRequests } from '../api/client.js'
 
 export function useNeedData() {
   const [needs, setNeeds] = useState<Need[]>([])
@@ -41,49 +16,45 @@ export function useNeedData() {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('/data/needs.csv')
-      if (!response.ok) {
-        throw new Error('無法載入需求資料')
-      }
+      // 🔥 改成從後端 API 拿資料
+      const data = await getAllRequests()
 
-      const csvText = await response.text()
-      const rawData = parseCSV<RawNeedData>(csvText)
-
-      const parsedNeeds: Need[] = rawData.map(row => {
+      // 🔥 從 PostgreSQL 的 REQUESTS table 轉成你前端需要的格式
+      const parsedNeeds: Need[] = data.map((row: any) => {
         const baseNeed = {
-          id: row.id,
-          title: row.title,
-          location: row.location,
-          region: row.region,
-          itemName: row.itemName,
-          requiredQuantity: parseInt(row.requiredQuantity) || 0,
-          currentQuantity: parseInt(row.currentQuantity) || 0,
-          unit: row.unit,
-          severity: row.severity as any,
-          deadline: row.deadline,
-          description: row.description,
-          publisherName: row.publisherName,
-          contactPhone: row.contactPhone,
-          contactEmail: row.contactEmail,
-          status: row.status as any,
-          createdAt: row.createdAt,
-          managementKey: row.managementKey
+          id: String(row.request_id),
+          title: row.title || '未命名需求',
+          location: row.address,
+          region: row.region || '未知地區',
+          itemName: row.item_name || '',
+          requiredQuantity: row.required_qty || 0,
+          currentQuantity: row.current_qty || 0,
+          unit: row.unit || '',
+          severity: String(row.urgency),
+          deadline: row.deadline || '',
+          description: row.description || '',
+          publisherName: row.publisher_name || '',
+          contactPhone: row.contact_phone || '',
+          contactEmail: row.contact_email || '',
+          status: row.status,
+          createdAt: row.request_date,
+          managementKey: 'N/A'
         }
 
-        if (row.needType === 'material') {
+        if (row.type === 'Item') {
           return {
             ...baseNeed,
             needType: 'material',
-            category: row.category as any
+            category: row.category || 'others'
           } as MaterialNeed
         } else {
           return {
             ...baseNeed,
             needType: 'rescue',
-            category: row.category as any,
-            timeSlots: row.timeSlots,
-            requiredSkills: row.requiredSkills,
-            providedSupport: row.providedSupport
+            category: row.category || 'others',
+            timeSlots: row.time_slots || '',
+            requiredSkills: row.required_skills || '',
+            providedSupport: row.provided_support || ''
           } as RescueNeed
         }
       })
@@ -97,11 +68,5 @@ export function useNeedData() {
     }
   }
 
-  const refreshNeeds = () => {
-    loadNeeds()
-  }
-
-  return { needs, loading, error, refreshNeeds }
+  return { needs, loading, error, refreshNeeds: loadNeeds }
 }
-
-
