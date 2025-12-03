@@ -1,14 +1,14 @@
 // services/users.js
-const db = require('../db'); 
+import { pool } from '../db.js';
 
 /**
  * 取得所有使用者
  * List_all_users
  */
-const getAllUsers = async () => {
+export const getAllUsers = async () => {
   try {
     const sql = 'SELECT * FROM "USERS"';
-    const { rows } = await db.query(sql);
+    const { rows } = await pool.query(sql);
     return rows;
   } catch (error) {
     console.error('Database Error:', error);
@@ -17,9 +17,23 @@ const getAllUsers = async () => {
 };
 
 /**
+ * 取得單一使用者
+ */
+export const getUserById = async (id) => {
+  try {
+    const sql = 'SELECT * FROM "USERS" WHERE user_id = $1';
+    const { rows } = await pool.query(sql, [id]);
+    return rows[0];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw error;
+  }
+};
+
+/**
  * 建立新使用者
  */
-const createUser = async (data) => {
+export const createUser = async (data) => {
   const { name, role, phone, status = 'active' } = data;
 
   try {
@@ -30,7 +44,7 @@ const createUser = async (data) => {
     `;
     
     const values = [name, role, phone, status];
-    const { rows } = await db.query(sql, values);
+    const { rows } = await pool.query(sql, values);
     
     return rows[0];
   } catch (error) {
@@ -42,19 +56,19 @@ const createUser = async (data) => {
 /**
  * 更新使用者
  */
-const updateUser = async (data) => {
+export const updateUser = async (data) => {
   const { id, name, role, phone, status = 'active' } = data;
 
   try {
     const sql = `
       UPDATE "USERS" 
       SET name = $1, role = $2, phone = $3, status = $4 
-      WHERE id = $5
+      WHERE user_id = $5
       RETURNING *; 
     `;
     
     const values = [name, role, phone, status, id];
-    const { rows } = await db.query(sql, values);
+    const { rows } = await pool.query(sql, values);
     
     return rows[0];
   } catch (error) {
@@ -66,22 +80,15 @@ const updateUser = async (data) => {
 /**
  * 刪除使用者
  */
-const deleteUser = async (id) => {
+export const deleteUser = async (id) => {
 
   try {
-    const sql = 'DELETE FROM "USERS" WHERE id = $1 RETURNING id';
-    const { rows } = await db.query(sql, [id]);
+    const sql = 'DELETE FROM "USERS" WHERE user_id = $1 RETURNING user_id';
+    const { rows } = await pool.query(sql, [id]);
     
     return rows[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw error;
   }
-};
-
-module.exports = {
-  getAllUsers,
-  createUser,
-  updateUser,
-  deleteUser
 };

@@ -1,12 +1,6 @@
 import { pool } from '../db.js';
 
 /**
- * Create a new request
- * Table: REQUESTS
- */
-import { pool } from '../db.js';
-
-/**
  * Create a new request with type-specific details
  * Supports 'item' and 'rescue' types
  */
@@ -32,7 +26,7 @@ export const createRequest = async (data) => {
       INSERT INTO "REQUESTS" 
       (requester_id, incident_id, status, urgency, type, address, latitude, longitude)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING request_id, created_at; // Returning created_at is good practice
+      RETURNING request_id, created_at;
     `;
     
     const requestValues = [
@@ -245,3 +239,17 @@ export const getAllUnverifiedRequests = async () => {
     throw error;
   }
 };
+
+/**
+ * Get ALL requests
+ */
+export const getAllRequests = async () => {
+    try {
+      const sql = 'SELECT * FROM "REQUESTS" ORDER BY request_date DESC';
+      const { rows } = await pool.query(sql);
+      return rows;
+    } catch (error) {
+      console.error('Error getting all requests:', error);
+      throw error;
+    }
+  };

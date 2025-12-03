@@ -1,11 +1,9 @@
-const { it } = require('node:test');
-const db = require('../db');
-
+import { pool } from '../db.js';
 
 /**
  * Add Inventory Item
  */
-const addInventoryItem = async (data) => {
+export const addInventoryItem = async (data) => {
     const { inventory_id, item_id, qty } = data;
   
     try {
@@ -17,7 +15,7 @@ const addInventoryItem = async (data) => {
       
       const values = [inventory_id, item_id, qty];
   
-      const { rows } = await db.query(sql, values);
+      const { rows } = await pool.query(sql, values);
       
       return rows[0]; // Returning inserted Inventory item 
   
@@ -30,7 +28,7 @@ const addInventoryItem = async (data) => {
 /**
  * Update Inventory Item
  */
-const updateInventoryItem = async (data) => {
+export const updateInventoryItem = async (data) => {
   const { inventory_id, item_id, qty, updated_at, status } = data;
   
   try {
@@ -44,7 +42,7 @@ const updateInventoryItem = async (data) => {
     // 參數順序必須對應上面的 $1, $2, $3...
     const values = [inventory_id, item_id, qty, updated_at, status];
 
-    const { rows } = await db.query(sql, values);
+    const { rows } = await pool.query(sql, values);
     
     return rows[0]; // 回傳更新後的那筆資料
 
@@ -57,12 +55,16 @@ const updateInventoryItem = async (data) => {
 /**
  * Delete Inventory Item
  */
-const deleteInventoryItem = async (data) => {
+export const deleteInventoryItem = async (data) => {
   const { inventory_id, item_id } = data; 
-
+  
   try {
-    const sql = 'DELETE FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2 RETURNING id';
-    const { rows } = await db.query(sql, [id]);
+    const sql = 'DELETE FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2 RETURNING inventory_id'; // Returning inventory_id is weird if composite key, but ok
+    // Wait, original code had `[id]` which was undefined. It should be `[inventory_id, item_id]`.
+    // And SQL only had $1 and $2.
+    // Original code: `const { rows } = await db.query(sql, [id]);` -> BUG!
+    
+    const { rows } = await pool.query(sql, [inventory_id, item_id]);
     
     return rows[0];
 
@@ -76,10 +78,10 @@ const deleteInventoryItem = async (data) => {
  * Search Inventory Items by Category
  *  ============================================
  *  This approach might a little bit slow :( 
- ** Maybe denormalize the table in the future?
- ** ============================================
+ *  Maybe denormalize the table in the future?
+ *  ============================================
  */
- const searchInventoryItemsByCategory = async (data) => {
+ export const searchInventoryItemsByCategory = async (data) => {
   const { inventory_id, category_id } = data;
 
   try {
@@ -97,7 +99,7 @@ const deleteInventoryItem = async (data) => {
         AND ic.category_id = $2
     `;
     
-    const { rows } = await db.query(sql, [inventory_id, category_id]);
+    const { rows } = await pool.query(sql, [inventory_id, category_id]);
     
     return rows;
 
@@ -105,10 +107,4 @@ const deleteInventoryItem = async (data) => {
     console.error('Error searching inventory items by category:', error);
     throw error;
   }
-};
-
-module.exports = {
-  updateInventoryItem,
-  deleteInventoryItem,
-  searchInventoryItemsByCategory
 };

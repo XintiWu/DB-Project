@@ -81,3 +81,17 @@ export const deleteRequestAccepter = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get All Request Accepters
+ */
+export const getAllRequestAccepters = async () => {
+  try {
+    const sql = 'SELECT * FROM "REQUEST_ACCEPTERS" ORDER BY created_at DESC';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all request accepters:', error);
+    throw error;
+  }
+};

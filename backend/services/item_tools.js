@@ -83,3 +83,17 @@ export const deleteItemTool = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get All Item Tools
+ */
+export const getAllItemTools = async () => {
+  try {
+    const sql = 'SELECT * FROM "ITEM_TOOLS"';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all item tools:', error);
+    throw error;
+  }
+};

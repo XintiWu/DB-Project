@@ -64,3 +64,17 @@ export const deleteProvide = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get All Provides
+ */
+export const getAllProvides = async () => {
+  try {
+    const sql = 'SELECT * FROM "PROVIDES" ORDER BY provide_date DESC';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all provides:', error);
+    throw error;
+  }
+};

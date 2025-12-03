@@ -81,3 +81,17 @@ export const deleteItemSupply = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get All Item Supplies
+ */
+export const getAllItemSupplies = async () => {
+  try {
+    const sql = 'SELECT * FROM "ITEM_SUPPLIES"';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all item supplies:', error);
+    throw error;
+  }
+};

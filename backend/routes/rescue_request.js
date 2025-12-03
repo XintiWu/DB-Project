@@ -1,13 +1,25 @@
 import express from "express";
-import { createBaseController } from "../controllers/baseController.js";
+import * as service from "../services/rescue_requests.js";
 
 const router = express.Router();
-const c = createBaseController("RESCUE_REQUEST", "request_id");
 
-router.get("/", c.getAll);
-router.get("/:id", c.getOne);
-router.post("/", c.create);
-router.put("/:id", c.update);
-router.delete("/:id", c.remove);
+router.get("/:id", async (req, res) => {
+  try {
+    const result = await service.getRescueDetails({ request_id: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const data = { ...req.body, request_id: req.params.id };
+    const result = await service.updateRescueHeadcount(data);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

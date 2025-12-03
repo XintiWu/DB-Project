@@ -93,3 +93,17 @@ export const getOutstandingLends = async () => {
     throw error;
   }
 };
+
+/**
+ * Get All Lends
+ */
+export const getAllLends = async () => {
+  try {
+    const sql = 'SELECT * FROM "LENDS" ORDER BY lend_at DESC';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all lends:', error);
+    throw error;
+  }
+};

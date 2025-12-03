@@ -1,9 +1,9 @@
-const db = require('../db'); 
+import { pool } from '../db.js';
 
 /**
  * Create Incident
  */
-const createIncident = async (data) => {
+export const createIncident = async (data) => {
   const { 
     title, type, severity, area_id, reporter_id, 
     address, status, msg, latitude, longitude 
@@ -23,7 +23,7 @@ const createIncident = async (data) => {
       address, status, msg, latitude, longitude
     ];
 
-    const { rows } = await db.query(sql, values);
+    const { rows } = await pool.query(sql, values);
     return rows[0]; 
 
   } catch (error) {
@@ -35,7 +35,7 @@ const createIncident = async (data) => {
 /**
  * Update Incident
  */
-const updateIncident = async (data) => {
+export const updateIncident = async (data) => {
 //data should include id and the fields to update
   const { 
     id, title, type, severity, area_id, 
@@ -47,7 +47,7 @@ const updateIncident = async (data) => {
       UPDATE "INCIDENTS"
       SET title = $1, type = $2, severity = $3, area_id = $4, 
           address = $5, status = $6, msg = $7, latitude = $8, longitude = $9
-      WHERE id = $10
+      WHERE incident_id = $10
       RETURNING *;
     `;
     
@@ -57,7 +57,7 @@ const updateIncident = async (data) => {
       id
     ];
 
-    const { rows } = await db.query(sql, values);
+    const { rows } = await pool.query(sql, values);
     return rows[0];
 
   } catch (error) {
@@ -69,11 +69,11 @@ const updateIncident = async (data) => {
 /**
  * Delete Incident
  */
-const deleteIncident = async (id) => {
+export const deleteIncident = async (id) => {
 
   try {
-    const sql = 'DELETE FROM "INCIDENTS" WHERE id = $1 RETURNING id';
-    const { rows } = await db.query(sql, [id]);
+    const sql = 'DELETE FROM "INCIDENTS" WHERE incident_id = $1 RETURNING incident_id';
+    const { rows } = await pool.query(sql, [id]);
     
     return rows[0];
 
@@ -86,12 +86,12 @@ const deleteIncident = async (id) => {
 /**
  * Search Incidents by Area ID
  */
-const searchIncidentsByAreaId = async (data) => {
+export const searchIncidentsByAreaId = async (data) => {
   const { area_id } = data;
 
   try {
     const sql = 'SELECT * FROM "INCIDENTS" WHERE area_id = $1';
-    const { rows } = await db.query(sql, [area_id]);
+    const { rows } = await pool.query(sql, [area_id]);
     
     return rows; //Incident list
 
@@ -104,18 +104,46 @@ const searchIncidentsByAreaId = async (data) => {
 /**
  * Search incidents by Reporter ID
  */
-const searchIncidentsByReporterId = async (data) => {
+export const searchIncidentsByReporterId = async (data) => {
   const { reporter_id } = data;
 
   try {
     const sql = 'SELECT * FROM "INCIDENTS" WHERE reporter_id = $1';
-    const { rows } = await db.query(sql, [reporter_id]);
+    const { rows } = await pool.query(sql, [reporter_id]);
     
     return rows; //Incident list
 
   } 
   catch (error) {
     console.error('Error searching incidents by reporter:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get All Incidents
+ */
+export const getAllIncidents = async () => {
+  try {
+    const sql = 'SELECT * FROM "INCIDENTS" ORDER BY created_at DESC';
+    const { rows } = await pool.query(sql);
+    return rows;
+  } catch (error) {
+    console.error('Error getting all incidents:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get Incident by ID
+ */
+export const getIncidentById = async (id) => {
+  try {
+    const sql = 'SELECT * FROM "INCIDENTS" WHERE incident_id = $1';
+    const { rows } = await pool.query(sql, [id]);
+    return rows[0];
+  } catch (error) {
+    console.error('Error getting incident by id:', error);
     throw error;
   }
 };

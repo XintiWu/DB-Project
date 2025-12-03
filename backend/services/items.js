@@ -137,3 +137,24 @@ export const searchItemByItemId = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get All Items
+ */
+export const getAllItems = async () => {
+    try {
+      const sql = `
+        SELECT 
+          i.item_id, i.item_name, i.unit,
+          c.category_name
+        FROM "ITEMS" i
+        LEFT JOIN "ITEM_CATEGORIES" c ON i.category_id = c.category_id
+        ORDER BY i.item_id ASC
+      `;
+      const { rows } = await pool.query(sql);
+      return rows;
+    } catch (error) {
+      console.error('Error getting all items:', error);
+      throw error;
+    }
+  };
