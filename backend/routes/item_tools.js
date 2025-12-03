@@ -1,5 +1,5 @@
 import express from "express";
-import { createBaseBaseController } from "../controllers/baseController.js";
+import { createBaseController } from "../controllers/baseController.js";
 
 const router = express.Router();
 const c = createBaseController("ITEM_TOOLS", "item_id");
