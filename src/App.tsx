@@ -7,6 +7,16 @@ import { ClaimConfirmPage } from './pages/ClaimConfirmPage'
 import { ClaimSuccessPage } from './pages/ClaimSuccessPage'
 import { PublishNeedPage } from './pages/PublishNeedPage'
 import { PublishSuccessPage } from './pages/PublishSuccessPage'
+import { IncidentListPage } from './pages/IncidentListPage'
+import { ReportIncidentPage } from './pages/ReportIncidentPage'
+import { IncidentDetailPage } from './pages/IncidentDetailPage'
+import { ReportSuccessPage } from './pages/ReportSuccessPage'
+import { InventoryPage } from './pages/InventoryPage'
+import { DonateItemPage } from './pages/DonateItemPage'
+import { MyLendsPage } from './pages/MyLendsPage'
+import { DonationListPage } from './pages/DonationListPage'
+import { ProfilePage } from './pages/ProfilePage'
+import { ShelterListPage } from './pages/ShelterListPage'
 import { Suspense } from 'react'
 
 function App() {
@@ -30,6 +40,26 @@ function App() {
                 <Route path="/claim/success" element={<ClaimSuccessPage />} />
                 <Route path="/publish" element={<PublishNeedPage />} />
                 <Route path="/publish/success" element={<PublishSuccessPage />} />
+                
+                {/* 災情通報模組 */}
+                <Route path="/incidents" element={<IncidentListPage />} />
+                <Route path="/incidents/report" element={<ReportIncidentPage />} />
+                <Route path="/incidents/report/success" element={<ReportSuccessPage />} />
+                <Route path="/incidents/:id" element={<IncidentDetailPage />} />
+                
+                {/* 物品庫系統模組 */}
+                <Route path="/inventory" element={<InventoryPage />} />
+                <Route path="/inventory/donate" element={<DonateItemPage />} />
+                <Route path="/profile/lends" element={<MyLendsPage />} />
+                
+                {/* 捐贈金流模組 */}
+                <Route path="/donations" element={<DonationListPage />} />
+                
+                {/* 避難所模組 */}
+                <Route path="/shelters" element={<ShelterListPage />} />
+                
+                {/* 個人中心 */}
+                <Route path="/profile" element={<ProfilePage />} />
               </Routes>
             </Suspense>
           </ClaimProvider>

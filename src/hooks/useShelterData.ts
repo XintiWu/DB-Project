@@ -22,17 +22,22 @@ export const useShelterData = () => {
         const text = await response.text();
         
         // 解析 CSV
+        // CSV 格式: shelter_id,name,address,phone,capacity,type,latitude,longitude
         const lines = text.trim().split('\n').slice(1); // 跳過標題行
         const data = lines
           .filter(line => line.trim()) // 過濾空行
           .map(line => {
-            const [id, name, location, capacity, occupancy, phone] = line.split(',');
+            const [id, name, address, phone, capacity, type] = line.split(',');
+            const cap = parseInt(capacity) || 0;
+            // 生成合理的模擬入住人數（50%-90% 的容量）
+            const occupancy = Math.floor(cap * (0.5 + Math.random() * 0.4));
+            
             return {
               shelter_id: id?.trim() || '',
               name: name?.trim() || '',
-              location: location?.trim() || '',
-              capacity: parseInt(capacity) || 0,
-              current_occupancy: parseInt(occupancy) || 0,
+              location: address?.trim() || '',
+              capacity: cap,
+              current_occupancy: occupancy,
               contact_phone: phone?.trim() || ''
             };
           });

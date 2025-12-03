@@ -106,6 +106,21 @@ export function HomePage() {
               <p className="text-sm text-muted-foreground dark:text-slate-400">連結需求與資源，共同度過難關</p>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/incidents')}>
+                🚨 災情
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/inventory')}>
+                📦 物資
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/shelters')}>
+                🏠 避難所
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/donations')}>
+                💰 捐款
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
+                👤 個人
+              </Button>
               <Button variant="outline" onClick={() => navigate('/publish')}>
                 ➕ 發布需求
               </Button>
@@ -164,7 +179,7 @@ export function HomePage() {
       )}
 
       {/* 附近避難所 */}
-      <div className="bg-slate-50 dark:bg-slate-900 py-12">
+      <div id="shelter-section" className="bg-slate-50 dark:bg-slate-900 py-12">
         <div className="container mx-auto px-4">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-slate-800 dark:text-slate-100 mb-3">
@@ -199,7 +214,7 @@ export function HomePage() {
                   <Button 
                     variant="outline"
                     size="lg"
-                    onClick={() => alert('避難所列表頁面即將推出！')}
+                    onClick={() => navigate('/shelters')}
                   >
                     查看全部 {shelters.length} 個避難所 →
                   </Button>

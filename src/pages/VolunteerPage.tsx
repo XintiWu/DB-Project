@@ -255,6 +255,22 @@ export function VolunteerPage() {
                 {theme === 'dark' ? '🌞' : '🌙'}
               </Button>
               
+              <Button variant="ghost" size="sm" onClick={() => navigate('/incidents')}>
+                🚨 災情
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/inventory')}>
+                📦 物資
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/shelters')}>
+                🏠 避難所
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/donations')}>
+                💰 捐款
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/profile')}>
+                👤 個人
+              </Button>
+              
               <Button variant="outline" onClick={() => navigate('/publish')}>
                 ➕ 發布需求
               </Button>

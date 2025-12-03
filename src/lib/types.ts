@@ -176,3 +176,155 @@ export interface PublishNeedFormData {
   contactPhone: string
   contactEmail: string
 }
+
+/**
+ * 災情事件狀態
+ */
+export type IncidentStatus = 'Occurring' | 'Resolved' | 'Under Investigation'
+
+/**
+ * 審核狀態
+ */
+export type ReviewStatus = 'Verified' | 'Pending' | 'Rejected'
+
+/**
+ * 災情事件
+ */
+export interface Incident {
+  incident_id: string
+  title: string
+  type: string                    // 災情類型（土石流、水災、道路災害等）
+  severity: number                // 嚴重程度（1-5）
+  area_id: string                 // 區域ID
+  reported_at: string             // 通報時間
+  reporter_id: string             // 通報者ID
+  address: string                 // 地址
+  status: IncidentStatus          // 狀態
+  msg: string                     // 詳細描述
+  latitude: number                // 緯度
+  longitude: number               // 經度
+  reviewed_at?: string            // 審核時間
+  reviewer_id?: string            // 審核者ID
+  review_status?: ReviewStatus    // 審核狀態
+  review_note?: string            // 審核備註
+}
+
+/**
+ * 物品類別
+ */
+export interface ItemCategory {
+  category_id: string
+  category_name: string
+  is_tool: boolean                // 是否為工具（可借用）
+}
+
+/**
+ * 物品
+ */
+export interface Item {
+  item_id: string
+  item_name: string
+  category_id: string
+  unit: string
+}
+
+/**
+ * 庫存
+ */
+export interface Inventory {
+  inventory_id: string
+  status: string                  // Active, Suspended
+  address: string
+}
+
+/**
+ * 庫存物品（物品在某個庫存中的數量）
+ */
+export interface InventoryItem {
+  item_id: string
+  item_name: string
+  category_id: string
+  unit: string
+  available_qty: number           // 可用數量
+  inventory_id: string
+  address: string
+  status?: string                 // 物資狀態
+}
+
+/**
+ * 借用記錄
+ */
+export interface LendRecord {
+  lend_id: string
+  user_id: string
+  item_id: string
+  item_name: string
+  qty: number
+  from_inventory_id: string
+  lend_at: string                 // 借用時間
+  returned_at?: string            // 歸還時間
+}
+
+/**
+ * 借用狀態
+ */
+export type LendStatus = 'ongoing' | 'returned' | 'overdue'
+
+/**
+ * 捐款記錄
+ */
+export interface DonationRecord {
+  txn_id: string                  // 交易編號
+  source: string                  // 資金來源
+  amount: number                  // 金額
+  currency: string                // 幣別
+  purpose: string                 // 交易目的
+  created_at: string              // 建立時間
+}
+
+/**
+ * 避難所資訊
+ */
+export interface Shelter {
+  shelter_id: string
+  name: string
+  location: string
+  capacity: number
+  current_occupancy: number
+  contact_phone: string
+}
+
+/**
+ * 災情篩選條件
+ */
+export interface IncidentFilterOptions {
+  type: string | 'all'            // 災情類型
+  severity: number | 'all'        // 嚴重程度
+  status: IncidentStatus | 'all'  // 狀態
+  area: string | 'all'            // 地區
+  searchKeyword: string           // 搜尋關鍵字
+}
+
+/**
+ * 物資篩選條件
+ */
+export interface InventoryFilterOptions {
+  category: string | 'all'        // 類別
+  area: string | 'all'            // 地區
+  searchKeyword: string           // 搜尋關鍵字
+  availableOnly: boolean          // 只顯示有庫存的
+}
+
+/**
+ * 通報災情表單資料
+ */
+export interface ReportIncidentFormData {
+  title: string
+  type: string
+  severity: number
+  address: string
+  latitude?: number
+  longitude?: number
+  msg: string
+  reporter_id: string
+}
