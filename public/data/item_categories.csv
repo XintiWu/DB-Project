@@ -1,0 +1,17 @@
+category_id,category_name,is_tool
+1,食物,False
+2,飲用水,False
+3,醫療用品,False
+4,衣物,False
+5,住所用品,False
+6,日用品,False
+7,挖土機,True
+8,發電機,True
+9,淨水設備,True
+10,運輸車輛,True
+11,照明設備,True
+12,通訊設備,True
+13,其他工具,True
+14,其他物資,False
+
+

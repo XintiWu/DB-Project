@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* 主背景 - 使用柔和的深灰藍色，避免純黑造成眼睛疲勞 */
+    --background: 220 26% 14%;
+    --foreground: 210 20% 92%;
+    
+    /* 卡片 - 比背景稍亮，提供清晰的層次感 */
+    --card: 217 25% 20%;
+    --card-foreground: 210 20% 92%;
+    
+    /* 彈出層 */
+    --popover: 217 25% 20%;
+    --popover-foreground: 210 20% 92%;
+    
+    /* 主色調 - 明亮但不刺眼的藍色 */
+    --primary: 217 89% 61%;
+    --primary-foreground: 210 40% 98%;
+    
+    /* 次要色 - 柔和的灰藍色背景 */
+    --secondary: 217 20% 28%;
+    --secondary-foreground: 210 20% 92%;
+    
+    /* 靜音色 - 用於非重點內容 */
+    --muted: 217 20% 28%;
+    --muted-foreground: 215 16% 62%;
+    
+    /* 強調色 */
+    --accent: 217 89% 61%;
+    --accent-foreground: 210 40% 98%;
+    
+    /* 警告/危險色 - 柔和但明顯的紅色 */
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 210 40% 98%;
+    
+    /* 邊框 - 適中的對比度，不會太突兀 */
+    --border: 217 22% 30%;
+    --input: 217 22% 30%;
+    
+    /* 聚焦環 - 與主色調一致 */
+    --ring: 217 89% 61%;
+    
+    /* 圖表顏色 - 提高亮度和飽和度以便在深色背景上清晰可見 */
+    --chart-1: 217 89% 61%;
+    --chart-2: 173 85% 55%;
+    --chart-3: 45 95% 60%;
+    --chart-4: 280 80% 68%;
+    --chart-5: 340 85% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* 日期選擇器和時間選擇器樣式調整 - 讓圖示顯示在左邊 */
+.date-picker-left-icon::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 18px 18px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.date-picker-left-icon::-webkit-datetime-edit {
+  padding-left: 2.5rem;
+  padding-right: 2rem;
+}
+
+.time-picker-left-icon::-webkit-calendar-picker-indicator {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpolyline points='12,6 12,12 16,14'/%3E%3C/svg%3E") no-repeat center;
+  background-size: 18px 18px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.time-picker-left-icon::-webkit-datetime-edit {
+  padding-left: 2.5rem;
+  padding-right: 2rem;
+}
+
+/* 自定義 shimmer 動畫 */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(100%) skewX(-12deg);
+  }
+}
