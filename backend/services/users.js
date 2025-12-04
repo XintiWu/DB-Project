@@ -34,7 +34,7 @@ export const getUserById = async (id) => {
  * 建立新使用者
  */
 export const createUser = async (data) => {
-  const { name, role, phone, status = 'active' } = data;
+  const { name, role, phone, status = 'Active' } = data;
 
   try {
     const sql = `
@@ -57,7 +57,7 @@ export const createUser = async (data) => {
  * 更新使用者
  */
 export const updateUser = async (data) => {
-  const { id, name, role, phone, status = 'active' } = data;
+  const { id, name, role, phone, status = 'Active' } = data;
 
   try {
     const sql = `

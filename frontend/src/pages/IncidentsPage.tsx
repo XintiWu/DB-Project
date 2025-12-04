@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { getAllIncidents } from '../api/client'
 import type { Incident } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
+import { Button } from '../components/ui/button'
 import { MapPin, AlertTriangle } from 'lucide-react'
 import { IncidentDetailModal } from '../components/IncidentDetailModal'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -33,11 +35,19 @@ export function IncidentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">災情通報</h1>
-        <p className="text-muted-foreground mt-2">
-          即時掌握各地災情狀況與緊急程度。
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">災情通報</h1>
+          <p className="text-muted-foreground mt-2">
+            即時掌握各地災情狀況與緊急程度。
+          </p>
+        </div>
+        <Link to="/report-incident">
+          <Button className="bg-red-600 hover:bg-red-700">
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            我要通報
+          </Button>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

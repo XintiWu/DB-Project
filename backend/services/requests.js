@@ -45,7 +45,7 @@ const BASE_QUERY = `
 export const createRequest = async (data) => {
   const { 
     requester_id, incident_id, status, urgency, type, 
-    address, latitude, longitude,
+    address, latitude, longitude, title,
     // Type-specific data fields:
     items,       // Array of { item_id, qty } for 'item' type
     headcount,   // Integer for 'rescue' type
@@ -76,14 +76,14 @@ export const createRequest = async (data) => {
     // 1. Insert into base REQUESTS table
     const insertRequestSql = `
       INSERT INTO "REQUESTS" 
-      (requester_id, incident_id, status, urgency, type, address, latitude, longitude, required_qty, current_qty)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)
+      (requester_id, incident_id, status, urgency, type, address, latitude, longitude, required_qty, current_qty, title)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10)
       RETURNING request_id, created_at;
     `;
     
     const requestValues = [
       requester_id, incident_id, status, urgency, type, 
-      address, latitude, longitude, requiredQty
+      address, latitude, longitude, requiredQty, title
     ];
     
     const requestResult = await client.query(insertRequestSql, requestValues);

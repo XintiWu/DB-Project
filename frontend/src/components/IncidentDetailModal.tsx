@@ -163,6 +163,16 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
               </div>
             </div>
 
+            <div className="mb-4 flex justify-end">
+              <Button 
+                variant="outline" 
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                onClick={() => navigate('/publish', { state: { incidentId: incident.incident_id, incidentTitle: incident.title } })}
+              >
+                + 發布需求
+              </Button>
+            </div>
+
             {loading ? (
               <div className="text-center py-8 text-muted-foreground">載入需求中...</div>
             ) : filteredRequests.length > 0 ? (

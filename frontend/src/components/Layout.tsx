@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { HeartHandshake, Home, PlusCircle, ShoppingCart, AlertTriangle, Package, DollarSign } from 'lucide-react'
+import { HeartHandshake, Home, PlusCircle, ShoppingCart, AlertTriangle, Package, DollarSign, Shield } from 'lucide-react'
 import { cn } from '../lib/utils'
+import { useAuth } from '../context/AuthContext'
 import { useClaimContext } from '../context/ClaimContext'
 
 function ClaimBadge() {
@@ -16,8 +17,40 @@ function ClaimBadge() {
   )
 }
 
+function AuthButtons() {
+  const { user, logout, isAuthenticated } = useAuth()
+
+  if (isAuthenticated && user) {
+    return (
+      <div className="flex items-center gap-3">
+        <Link to="/profile" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors">
+          Hi, {user.name}
+        </Link>
+        <button 
+          onClick={logout}
+          className="text-sm font-medium text-slate-500 hover:text-red-600 transition-colors"
+        >
+          登出
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">
+        登入
+      </Link>
+      <Link to="/register" className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-full hover:bg-blue-700 transition-colors">
+        註冊
+      </Link>
+    </div>
+  )
+}
+
 export function Layout() {
   const location = useLocation()
+  const { user } = useAuth()
 
   const navItems = [
     { href: '/', label: '首頁', icon: Home },
@@ -54,6 +87,12 @@ export function Layout() {
               <DollarSign className="h-4 w-4" />
               <span>財務</span>
             </Link>
+            {(user?.role === 'Admin' || user?.role === 'admin') && (
+              <Link to="/admin" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+                <Shield className="h-4 w-4" />
+                <span>管理後台</span>
+              </Link>
+            )}
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = location.pathname === item.href
@@ -82,6 +121,10 @@ export function Layout() {
               <ShoppingCart className="h-6 w-6" />
               <ClaimBadge />
             </Link>
+
+            <div className="ml-4 border-l pl-4 flex items-center gap-2">
+              <AuthButtons />
+            </div>
           </nav>
         </div>
       </header>

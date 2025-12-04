@@ -39,6 +39,13 @@ export function getAllIncidents() {
   return request<any[]>("/incidents");
 }
 
+export function createIncident(data: any) {
+  return request<any>("/incidents", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 export function getAllShelters() {
   return request<any[]>("/shelters");
 }
@@ -51,8 +58,49 @@ export function getAllFinancials() {
   return request<any[]>("/financials");
 }
 
+export function getFinancialStats() {
+  return request<any>("/financials/stats");
+}
+
 export function getAllItems() {
   return request<any[]>("/items");
+}
+
+export function getAllSkillTags() {
+  return request<any[]>("/skill-tags");
+}
+
+export function login(data: any) {
+  return request<any>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function register(data: any) {
+  return request<any>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getAnalytics() {
+  return request<any>("/analytics/stats");
+}
+
+export function getUserRequests(userId: string) {
+  return request<any[]>(`/requests?requester_id=${userId}`);
+}
+
+export function getUserIncidents(userId: string) {
+  return request<any[]>(`/incidents?reporter_id=${userId}`);
+}
+
+export function updateUser(userId: string, data: any) {
+  return request<any>(`/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getRequestsByIncidentId(incidentId: string) {
@@ -65,5 +113,16 @@ export async function getInventoryItems(inventoryId: string) {
   const res = await fetch(`${API_BASE_URL}/inventory-items?inventory_id=${inventoryId}`)
   if (!res.ok) throw new Error('Failed to fetch inventory items')
   return res.json()
+}
+
+export function getUnverifiedRequests() {
+  return request<any[]>("/requests?unverified=true");
+}
+
+export function reviewRequest(requestId: string, data: any) {
+  return request<any>(`/requests/${requestId}/review`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 }
 

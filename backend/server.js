@@ -20,6 +20,9 @@ import lendsRoute from "./routes/lends.js";
 import financialsRoute from "./routes/financials.js";
 import sheltersRoute from "./routes/shelters.js";
 import areaRoute from "./routes/area.js";
+import skillTagsRoute from "./routes/skill_tags.js";
+import analyticsRoute from "./routes/analytics.js";
+import authRoute from "./routes/auth.js";
 
 const app = express();
 app.use(cors());
@@ -31,6 +34,7 @@ app.get("/", (req, res) => {
 });
 
 // Register routes
+app.use("/api/auth", authRoute);
 app.use("/api/users", usersRoute);
 app.use("/api/requests", requestsRoute);
 app.use("/api/incidents", incidentsRoute);
@@ -50,6 +54,8 @@ app.use("/api/lends", lendsRoute);
 app.use("/api/financials", financialsRoute);
 app.use("/api/shelters", sheltersRoute);
 app.use("/api/area", areaRoute);
+app.use("/api/skill-tags", skillTagsRoute);
+app.use("/api/analytics", analyticsRoute);
 
 // Start
 app.listen(3000, () => {

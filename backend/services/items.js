@@ -146,7 +146,7 @@ export const getAllItems = async () => {
       const sql = `
         SELECT 
           i.item_id, i.item_name, i.unit,
-          c.category_name
+          c.category_name, c.is_tool
         FROM "ITEMS" i
         LEFT JOIN "ITEM_CATEGORIES" c ON i.category_id = c.category_id
         ORDER BY i.item_id ASC

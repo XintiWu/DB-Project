@@ -131,3 +131,35 @@ export const getAllTransactions = async () => {
     throw error;
   }
 };
+
+/**
+ * Get Financial Statistics
+ */
+export const getFinancialStats = async () => {
+  try {
+    const totalSql = 'SELECT COALESCE(SUM(amount::numeric), 0) as total_amount, COUNT(*) as total_count FROM "FINANCIALS"';
+    const purposeSql = 'SELECT purpose, COALESCE(SUM(amount::numeric), 0) as total_amount FROM "FINANCIALS" GROUP BY purpose';
+    const monthSql = `
+      SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COALESCE(SUM(amount::numeric), 0) as total_amount 
+      FROM "FINANCIALS" 
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM') 
+      ORDER BY month DESC 
+      LIMIT 12
+    `;
+
+    const [totalRes, purposeRes, monthRes] = await Promise.all([
+      pool.query(totalSql),
+      pool.query(purposeSql),
+      pool.query(monthSql)
+    ]);
+
+    return {
+      summary: totalRes.rows[0],
+      byPurpose: purposeRes.rows,
+      byMonth: monthRes.rows
+    };
+  } catch (error) {
+    console.error('Error getting financial stats:', error);
+    throw error;
+  }
+};

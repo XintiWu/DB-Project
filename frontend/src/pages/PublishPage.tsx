@@ -1,68 +1,117 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
-import { createRequest } from '../api/client'
-import { MATERIAL_CATEGORIES, RESCUE_CATEGORIES, REGIONS } from '../lib/constants'
-import type { NeedType, ResourceCategory, Severity } from '../lib/types'
+import { createRequest, getAllItems, getAllSkillTags } from '../api/client'
+import { AlertTriangle, Plus, Trash2 } from 'lucide-react'
 
 export function PublishPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  // Form State
-  const [needType, setNeedType] = useState<NeedType>('material')
-  const [title, setTitle] = useState('')
-  const [location, setLocation] = useState('')
-  const [region, setRegion] = useState(REGIONS[1]) // Default to North
-  const [category, setCategory] = useState<ResourceCategory>('food')
-  const [itemName, setItemName] = useState('')
-  const [quantity, setQuantity] = useState(1)
-  const [unit, setUnit] = useState('個')
-  const [severity, setSeverity] = useState<Severity>('medium')
-  const [deadline, setDeadline] = useState('')
-  const [description, setDescription] = useState('')
-  
-  // Rescue specific
-  const [timeSlots, setTimeSlots] = useState('')
-  const [requiredSkills, setRequiredSkills] = useState('')
-  const [providedSupport, setProvidedSupport] = useState('')
-  
-  // Contact
-  const [publisherName, setPublisherName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [contactEmail, setContactEmail] = useState('')
+  // Incident Context
+  const incidentState = location.state as { incidentId?: string, incidentTitle?: string } | null
+  const incidentId = incidentState?.incidentId
+  const incidentTitle = incidentState?.incidentTitle
 
-  const categories = needType === 'material' ? MATERIAL_CATEGORIES : RESCUE_CATEGORIES
+  // Data State
+  const [availableItems, setAvailableItems] = useState<any[]>([])
+  const [availableSkills, setAvailableSkills] = useState<any[]>([])
+  const [loadingData, setLoadingData] = useState(true)
+
+  // Form State
+  const [type, setType] = useState<'Material' | 'Tool' | 'Humanpower'>('Material')
+  const [title, setTitle] = useState('')
+  const [address, setAddress] = useState('')
+  const [urgency, setUrgency] = useState(3) // 1-5
+  
+  // Dynamic Items/Skills
+  const [selectedItems, setSelectedItems] = useState<{item_id: number, qty: number}[]>([])
+  const [selectedSkills, setSelectedSkills] = useState<{skill_tag_id: number, qty: number}[]>([])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [items, skills] = await Promise.all([getAllItems(), getAllSkillTags()])
+        setAvailableItems(items)
+        setAvailableSkills(skills)
+      } catch (err) {
+        console.error('Failed to fetch form data:', err)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const handleAddItem = () => {
+    setSelectedItems([...selectedItems, { item_id: availableItems[0]?.item_id || 0, qty: 1 }])
+  }
+
+  const handleRemoveItem = (index: number) => {
+    const newItems = [...selectedItems]
+    newItems.splice(index, 1)
+    setSelectedItems(newItems)
+  }
+
+  const handleUpdateItem = (index: number, field: 'item_id' | 'qty', value: number) => {
+    const newItems = [...selectedItems]
+    newItems[index] = { ...newItems[index], [field]: value }
+    setSelectedItems(newItems)
+  }
+
+  const handleAddSkill = () => {
+    setSelectedSkills([...selectedSkills, { skill_tag_id: availableSkills[0]?.skill_tag_id || 0, qty: 1 }])
+  }
+
+  const handleRemoveSkill = (index: number) => {
+    const newSkills = [...selectedSkills]
+    newSkills.splice(index, 1)
+    setSelectedSkills(newSkills)
+  }
+
+  const handleUpdateSkill = (index: number, field: 'skill_tag_id' | 'qty', value: number) => {
+    const newSkills = [...selectedSkills]
+    newSkills[index] = { ...newSkills[index], [field]: value }
+    setSelectedSkills(newSkills)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
-      const data = {
-        needType,
-        title,
-        location,
-        region,
-        category,
-        itemName,
-        requiredQuantity: quantity,
-        unit,
-        severity,
-        deadline,
-        description,
-        publisherName,
-        contactPhone,
-        contactEmail,
-        // Optional fields
-        timeSlots: needType === 'rescue' ? timeSlots : undefined,
-        requiredSkills: needType === 'rescue' ? requiredSkills : undefined,
-        providedSupport: needType === 'rescue' ? providedSupport : undefined,
+      // Construct payload based on schema
+      const payload: any = {
+        requester_id: 1, // Mock user ID for now
+        incident_id: incidentId ? parseInt(incidentId) : 1, // Default to incident 1 if not provided (should ideally block or select)
+        status: 'Not Completed',
+        urgency,
+        type,
+        address,
+        latitude: 25.0330, // Mock lat
+        longitude: 121.5654, // Mock long
+        title
       }
 
-      await createRequest(data)
+      if (type === 'Material') {
+        payload.items = selectedItems
+      } else if (type === 'Tool') {
+        // Backend expects 'equipments' for Tool type in createRequest logic?
+        // Let's check backend/services/requests.js again.
+        // It says: if (type === 'Humanpower' || type === 'rescue' || type === 'manpower' || type === 'Tool' || type === 'tool')
+        // And then checks for 'equipments'.
+        // Wait, for Tool, it should be equipments.
+        // But wait, 'equipments' array expects { required_equipment, qty }.
+        // required_equipment is item_id.
+        payload.equipments = selectedItems.map(i => ({ required_equipment: i.item_id, qty: i.qty }))
+      } else if (type === 'Humanpower') {
+        payload.skills = selectedSkills
+      }
+
+      await createRequest(payload)
       alert('需求發布成功！')
       navigate('/')
     } catch (err) {
@@ -73,13 +122,22 @@ export function PublishPage() {
     }
   }
 
+  if (loadingData) return <div className="text-center py-12">載入資料中...</div>
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">發布救援需求</h1>
+        <h1 className="text-3xl font-bold tracking-tight">發布需求</h1>
         <p className="text-muted-foreground mt-2">
-          請詳細填寫需求資訊，以便我們能更快速地為您媒合資源。
+          請填寫需求詳細資訊。
         </p>
+        
+        {incidentId && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="h-5 w-5" />
+            <span className="font-medium">連結至災情：{incidentTitle}</span>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -92,255 +150,151 @@ export function PublishPage() {
             <div>
               <label className="text-sm font-medium mb-2 block">需求類型</label>
               <div className="flex gap-4">
-                <label className="flex items-center gap-2 border p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors flex-1">
-                  <input
-                    type="radio"
-                    name="needType"
-                    checked={needType === 'material'}
-                    onChange={() => {
-                      setNeedType('material')
-                      setCategory('food')
-                    }}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="font-medium">物資需求</span>
-                </label>
-                <label className="flex items-center gap-2 border p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors flex-1">
-                  <input
-                    type="radio"
-                    name="needType"
-                    checked={needType === 'rescue'}
-                    onChange={() => {
-                      setNeedType('rescue')
-                      setCategory('medical_staff')
-                    }}
-                    className="w-4 h-4 text-blue-600"
-                  />
-                  <span className="font-medium">救災/人力需求</span>
-                </label>
+                {['Material', 'Tool', 'Humanpower'].map((t) => (
+                  <label key={t} className={`flex-1 border p-3 rounded-lg cursor-pointer text-center transition-colors ${type === t ? 'bg-blue-50 border-blue-500 text-blue-700' : 'hover:bg-slate-50'}`}>
+                    <input
+                      type="radio"
+                      name="type"
+                      checked={type === t}
+                      onChange={() => {
+                        setType(t as any)
+                        setSelectedItems([])
+                        setSelectedSkills([])
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="font-medium">
+                      {t === 'Material' ? '物資' : t === 'Tool' ? '工具/設備' : '人力'}
+                    </span>
+                  </label>
+                ))}
               </div>
             </div>
 
             {/* Title */}
             <div>
-              <label className="text-sm font-medium mb-2 block">
-                標題 <span className="text-red-500">*</span>
-              </label>
+              <label className="text-sm font-medium mb-2 block">標題</label>
               <Input
-                placeholder="請簡短描述需求 (例如：急需礦泉水 100 箱)"
+                placeholder="例如：急需礦泉水"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
             </div>
 
-            {/* Location & Region */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="text-sm font-medium mb-2 block">
-                  詳細地點 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="例如：花蓮縣花蓮市..."
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">區域</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={region}
-                  onChange={(e) => setRegion(e.target.value)}
-                >
-                  {REGIONS.filter(r => r !== '全部').map(r => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Category */}
+            {/* Address */}
             <div>
-              <label className="text-sm font-medium mb-2 block">類別</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {Object.values(categories).map((cat) => (
-                  <label
-                    key={cat.id}
-                    className={`
-                      flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all
-                      ${category === cat.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}
-                    `}
-                  >
-                    <input
-                      type="radio"
-                      name="category"
-                      value={cat.id}
-                      checked={category === cat.id}
-                      onChange={(e) => setCategory(e.target.value as ResourceCategory)}
-                      className="sr-only"
-                    />
-                    <span className="text-2xl mb-1">{cat.icon}</span>
-                    <span className="text-xs font-medium">{cat.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>需求詳情</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Item Name & Quantity */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
-                <label className="text-sm font-medium mb-2 block">
-                  項目名稱 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="例如：礦泉水"
-                  value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  數量 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  單位 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  placeholder="例如：箱、人"
-                  value={unit}
-                  onChange={(e) => setUnit(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Severity & Deadline */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">緊急程度</label>
-                <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={severity}
-                  onChange={(e) => setSeverity(e.target.value as Severity)}
-                >
-                  <option value="low">低度 (一週內)</option>
-                  <option value="medium">中度 (3天內)</option>
-                  <option value="high">高度 (24小時內)</option>
-                  <option value="critical">極緊急 (立即)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">截止時間</label>
-                <Input
-                  type="date"
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
-                />
-              </div>
-            </div>
-
-            {/* Rescue Specific */}
-            {needType === 'rescue' && (
-              <>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">需求時段</label>
-                  <Input
-                    placeholder="例如：每日 08:00 - 17:00"
-                    value={timeSlots}
-                    onChange={(e) => setTimeSlots(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">所需技能/資格</label>
-                  <Input
-                    placeholder="例如：需具備護理師執照"
-                    value={requiredSkills}
-                    onChange={(e) => setRequiredSkills(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">提供支援</label>
-                  <Input
-                    placeholder="例如：提供午餐、交通補助"
-                    value={providedSupport}
-                    onChange={(e) => setProvidedSupport(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-
-            {/* Description */}
-            <div>
-              <label className="text-sm font-medium mb-2 block">詳細說明</label>
-              <textarea
-                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="請詳細描述需求背景、特殊要求等..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>聯絡資訊</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                聯絡人/單位 <span className="text-red-500">*</span>
-              </label>
+              <label className="text-sm font-medium mb-2 block">地點</label>
               <Input
-                placeholder="請輸入聯絡人姓名或單位名稱"
-                value={publisherName}
-                onChange={(e) => setPublisherName(e.target.value)}
+                placeholder="請輸入詳細地址"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
                 required
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  聯絡電話 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="tel"
-                  placeholder="例如：0912-345-678"
-                  value={contactPhone}
-                  onChange={(e) => setContactPhone(e.target.value)}
-                  required
+
+            {/* Urgency */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">緊急程度 (1-5)</label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  value={urgency}
+                  onChange={(e) => setUrgency(parseInt(e.target.value))}
+                  className="w-full"
                 />
+                <span className="font-bold text-lg w-8 text-center">{urgency}</span>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">聯絡信箱</label>
-                <Input
-                  type="email"
-                  placeholder="例如：example@email.com"
-                  value={contactEmail}
-                  onChange={(e) => setContactEmail(e.target.value)}
-                />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>低</span>
+                <span>高</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>需求明細</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {type === 'Humanpower' ? (
+              <div className="space-y-4">
+                {selectedSkills.map((skill, index) => (
+                  <div key={index} className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs mb-1 block">技能</label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={skill.skill_tag_id}
+                        onChange={(e) => handleUpdateSkill(index, 'skill_tag_id', parseInt(e.target.value))}
+                      >
+                        {availableSkills.map(s => (
+                          <option key={s.skill_tag_id} value={s.skill_tag_id}>
+                            {s.skill_tag_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-24">
+                      <label className="text-xs mb-1 block">人數</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={skill.qty}
+                        onChange={(e) => handleUpdateSkill(index, 'qty', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveSkill(index)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={handleAddSkill} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" /> 新增技能需求
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {selectedItems.map((item, index) => (
+                  <div key={index} className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="text-xs mb-1 block">項目</label>
+                      <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={item.item_id}
+                        onChange={(e) => handleUpdateItem(index, 'item_id', parseInt(e.target.value))}
+                      >
+                        {availableItems
+                          .filter(i => type === 'Tool' ? i.is_tool : !i.is_tool)
+                          .map(i => (
+                          <option key={i.item_id} value={i.item_id}>
+                            {i.item_name} ({i.unit})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-24">
+                      <label className="text-xs mb-1 block">數量</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.qty}
+                        onChange={(e) => handleUpdateItem(index, 'qty', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={handleAddItem} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" /> 新增項目
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

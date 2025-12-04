@@ -3,6 +3,15 @@ import * as service from "../services/financials.js";
 
 const router = express.Router();
 
+router.get("/stats", async (req, res) => {
+  try {
+    const result = await service.getFinancialStats();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get("/", async (req, res) => {
   try {
     if (req.query.admin_id) {
