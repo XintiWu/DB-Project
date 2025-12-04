@@ -1,0 +1,100 @@
+import { Link, Outlet, useLocation } from 'react-router-dom'
+import { HeartHandshake, Home, PlusCircle, ShoppingCart, AlertTriangle, Package, DollarSign } from 'lucide-react'
+import { cn } from '../lib/utils'
+import { useClaimContext } from '../context/ClaimContext'
+
+function ClaimBadge() {
+  const { getTotalItems } = useClaimContext()
+  const count = getTotalItems()
+  
+  if (count === 0) return null
+  
+  return (
+    <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+      {count}
+    </span>
+  )
+}
+
+export function Layout() {
+  const location = useLocation()
+
+  const navItems = [
+    { href: '/', label: '首頁', icon: Home },
+    { href: '/publish', label: '發布需求', icon: PlusCircle },
+  ]
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-md border-b border-white/20 shadow-sm supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2 text-blue-600 hover:opacity-80 transition-opacity">
+            <HeartHandshake className="h-8 w-8" />
+            <span className="font-bold text-xl tracking-tight">DisasterRelief</span>
+          </Link>
+
+          <nav className="flex items-center gap-1">
+            <Link to="/requests" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+              <HeartHandshake className="h-4 w-4" />
+              <span>需求列表</span>
+            </Link>
+            <Link to="/incidents" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+              <AlertTriangle className="h-4 w-4" />
+              <span>災情</span>
+            </Link>
+            <Link to="/shelters" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+              <Home className="h-4 w-4" />
+              <span>避難所</span>
+            </Link>
+            <Link to="/resources" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+              <Package className="h-4 w-4" />
+              <span>資源</span>
+            </Link>
+            <Link to="/financials" className="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors px-4 py-2 rounded-full hover:bg-white/50">
+              <DollarSign className="h-4 w-4" />
+              <span>財務</span>
+            </Link>
+            {navItems.map((item) => {
+              const Icon = item.icon
+              const isActive = location.pathname === item.href
+              
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all",
+                    isActive 
+                      ? "bg-blue-50/80 text-blue-600" 
+                      : "text-slate-600 hover:bg-white/50 hover:text-slate-900"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+            
+            <Link
+              to="/claim/confirm"
+              className="ml-2 relative p-2 text-slate-600 hover:text-blue-600 transition-colors"
+            >
+              <ShoppingCart className="h-6 w-6" />
+              <ClaimBadge />
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <Outlet />
+      </main>
+
+      <footer className="bg-white border-t py-8 mt-auto">
+        <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
+          <p>© 2024 DisasterRelief Platform. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  )
+}
