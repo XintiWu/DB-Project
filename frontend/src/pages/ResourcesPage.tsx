@@ -37,9 +37,22 @@ export function ResourcesPage() {
     fetchData()
   }, [])
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedInventory) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [selectedInventory])
+
   const handleInventoryClick = async (inv: Inventory) => {
     setSelectedInventory(inv)
     setLoadingItems(true)
+    setInventoryItems([]) // Clear previous items to ensure clean state
     try {
       const items = await getInventoryItems(inv.inventory_id)
       setInventoryItems(items)
@@ -70,34 +83,39 @@ export function ResourcesPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {inventories.map((inv) => (
-            <Card 
-              key={inv.inventory_id} 
-              className="hover:shadow-md transition-shadow cursor-pointer hover:border-blue-300"
+            <motion.div
+              layoutId={`card-${inv.inventory_id}`}
+              key={inv.inventory_id}
               onClick={() => handleInventoryClick(inv)}
+              className="cursor-pointer bg-white rounded-xl"
             >
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Warehouse className="h-5 w-5 text-indigo-500" />
-                  <CardTitle className="text-lg">
-                    倉庫 #{inv.inventory_id}
-                  </CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  <span>{inv.address}</span>
-                </div>
-                {inv.owner_id && (
-                  <div className="mt-2 text-xs text-slate-500">
-                    Owner ID: {inv.owner_id}
-                  </div>
-                )}
-                <div className="mt-4 text-xs text-blue-600 font-medium">
-                  點擊查看庫存 &rarr;
-                </div>
-              </CardContent>
-            </Card>
+              <motion.div animate={{ opacity: selectedInventory?.inventory_id === inv.inventory_id ? 0 : 1 }} transition={{ duration: 0.3 }}>
+                <Card className="hover:shadow-md transition-shadow hover:border-blue-300 h-full">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <Warehouse className="h-5 w-5 text-indigo-500" />
+                      <CardTitle className="text-lg">
+                      {inv.name || `倉庫 #${inv.inventory_id}`}
+                    </CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4" />
+                      <span>{inv.address}</span>
+                    </div>
+                    {inv.owner_id && (
+                      <div className="mt-2 text-xs text-slate-500">
+                        Owner ID: {inv.owner_id}
+                      </div>
+                    )}
+                    <div className="mt-4 text-xs text-blue-600 font-medium">
+                      點擊查看庫存 &rarr;
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
           ))}
         </div>
       </section>
@@ -135,109 +153,108 @@ export function ResourcesPage() {
       </section>
 
       {/* Warehouse Detail Modal */}
-      {/* Warehouse Detail Modal */}
       <AnimatePresence>
         {selectedInventory && (
-          <motion.div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          >
+          <div className="fixed top-0 left-0 h-screen w-screen z-[9999] flex items-center justify-center p-4">
             <motion.div 
-              className="absolute inset-0 bg-black/30"
+              className="absolute inset-0 bg-black/20 backdrop-blur-sm z-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setSelectedInventory(null)}
-              initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-              animate={{ opacity: 1, backdropFilter: 'blur(12px)' }}
-              exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-              transition={{ duration: 0.3 }}
             />
             
             <motion.div 
-              className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl overflow-hidden"
-              style={{
-                background: 'rgba(255, 255, 255, 0.85)',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-                border: '1px solid rgba(255, 255, 255, 0.18)'
-              }}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.3, type: "spring", damping: 25, stiffness: 300 }}
+              layoutId={`card-${selectedInventory.inventory_id}`}
+              className="relative z-50 w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl overflow-hidden bg-white/85 backdrop-blur-xl shadow-2xl border border-white/20"
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <div className="flex items-center justify-between p-6 border-b border-white/20 bg-white/40">
-                <div>
-                  <h3 className="text-xl font-bold flex items-center gap-2 text-slate-900">
-                    <Warehouse className="h-5 w-5 text-indigo-500" />
-                    倉庫 #{selectedInventory.inventory_id} 庫存詳情
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {selectedInventory.address}
-                  </p>
+              <motion.div 
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0 }}
+                className="flex flex-col h-full"
+              >
+                <div className="flex items-center justify-between p-6 border-b border-white/20 bg-white/40">
+                  <div>
+                    <h3 className="text-xl font-bold flex items-center gap-2 text-slate-900">
+                      <Warehouse className="h-5 w-5 text-indigo-500" />
+                      {selectedInventory.name || `倉庫 #${selectedInventory.inventory_id}`} 庫存詳情
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1 flex items-center gap-1">
+                      <MapPin className="h-3 w-3" />
+                      {selectedInventory.address}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedInventory(null)}
+                    className="p-2 hover:bg-black/5 rounded-full transition-colors"
+                  >
+                    <X className="h-5 w-5 text-slate-500" />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSelectedInventory(null)}
-                  className="p-2 hover:bg-black/5 rounded-full transition-colors"
-                >
-                  <X className="h-5 w-5 text-slate-500" />
-                </button>
-              </div>
-              
-              <div className="p-6 overflow-y-auto flex-1">
-                {loadingItems ? (
-                  <div className="text-center py-8 text-slate-500">載入庫存中...</div>
-                ) : inventoryItems.length > 0 ? (
-                  <Tabs defaultValue="all" className="w-full">
-                    <TabsList className="mb-4 flex flex-wrap h-auto gap-2 bg-transparent p-0 justify-start">
-                      <TabsTrigger value="all" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200">
-                        全部 ({inventoryItems.length})
-                      </TabsTrigger>
-                      {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
-                        <TabsTrigger 
-                          key={cat} 
-                          value={cat}
-                          className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200"
-                        >
-                          {cat} ({inventoryItems.filter(i => i.category_name === cat).length})
-                        </TabsTrigger>
+                
+                <div className="p-6 overflow-y-auto flex-1">
+                  {loadingItems ? (
+                    <div className="grid gap-4">
+                      {[1, 2, 3, 4].map((i) => (
+                        <InventoryItemSkeleton key={i} />
                       ))}
-                    </TabsList>
-
-                    <TabsContent value="all" className="mt-0">
-                      <div className="grid gap-4">
-                        {inventoryItems.map((item, idx) => (
-                          <InventoryItemCard key={idx} item={item} />
+                    </div>
+                  ) : inventoryItems.length > 0 ? (
+                    <Tabs defaultValue="all" className="w-full">
+                      <TabsList className="mb-4 flex flex-wrap h-auto gap-2 bg-transparent p-0 justify-start">
+                        <TabsTrigger value="all" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200">
+                          全部 ({inventoryItems.length})
+                        </TabsTrigger>
+                        {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
+                          <TabsTrigger 
+                            key={cat} 
+                            value={cat}
+                            className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200"
+                          >
+                            {cat} ({inventoryItems.filter(i => i.category_name === cat).length})
+                          </TabsTrigger>
                         ))}
-                      </div>
-                    </TabsContent>
+                      </TabsList>
 
-                    {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
-                      <TabsContent key={cat} value={cat} className="mt-0">
+                      <TabsContent value="all" className="mt-0">
                         <div className="grid gap-4">
-                          {inventoryItems.filter(i => i.category_name === cat).map((item, idx) => (
+                          {inventoryItems.map((item, idx) => (
                             <InventoryItemCard key={idx} item={item} />
                           ))}
                         </div>
                       </TabsContent>
-                    ))}
-                  </Tabs>
-                ) : (
-                  <div className="text-center py-12 text-slate-500 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
-                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>此倉庫目前沒有庫存</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-4 border-t border-white/20 bg-white/40 flex justify-end">
-                <button 
-                  onClick={() => setSelectedInventory(null)}
-                  className="px-4 py-2 bg-white/50 border border-white/20 rounded-md hover:bg-white/80 text-sm font-medium transition-colors"
-                >
-                  關閉
-                </button>
-              </div>
+
+                      {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
+                        <TabsContent key={cat} value={cat} className="mt-0">
+                          <div className="grid gap-4">
+                            {inventoryItems.filter(i => i.category_name === cat).map((item, idx) => (
+                              <InventoryItemCard key={idx} item={item} />
+                            ))}
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  ) : (
+                    <div className="text-center py-12 text-slate-500 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
+                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p>此倉庫目前沒有庫存</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4 border-t border-white/20 bg-white/40 flex justify-end">
+                  <button 
+                    onClick={() => setSelectedInventory(null)}
+                    className="px-4 py-2 bg-white/50 border border-white/20 rounded-md hover:bg-white/80 text-sm font-medium transition-colors"
+                  >
+                    關閉
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -262,5 +279,38 @@ function InventoryItemCard({ item }: { item: any }) {
         {item.unit}
       </div>
     </div>
+  )
+}
+
+
+
+function InventoryItemSkeleton() {
+  return (
+    <div className="flex items-center justify-between p-3 border border-white/20 rounded-lg bg-white/30">
+      <div className="flex items-center gap-3 w-full">
+        <div className="relative h-10 w-10 rounded-full bg-slate-200/50 overflow-hidden shrink-0">
+           <Shimmer />
+        </div>
+        <div className="space-y-2 flex-1">
+          <div className="relative h-4 w-24 bg-slate-200/50 rounded overflow-hidden">
+            <Shimmer />
+          </div>
+          <div className="relative h-3 w-32 bg-slate-200/50 rounded overflow-hidden">
+            <Shimmer />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Shimmer() {
+  return (
+    <motion.div
+      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent"
+      initial={{ x: '-100%' }}
+      animate={{ x: '100%' }}
+      transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+    />
   )
 }

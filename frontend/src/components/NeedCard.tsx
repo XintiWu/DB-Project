@@ -9,20 +9,28 @@ import { motion } from 'framer-motion'
 interface NeedCardProps {
   need: Need
   onClick: (need: Need) => void
+  layoutId?: string
+  isSelected?: boolean
 }
 
-export function NeedCard({ need, onClick }: NeedCardProps) {
+export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps) {
   const category = ALL_CATEGORIES[need.category as keyof typeof ALL_CATEGORIES]
   const severity = SEVERITY_INFO[need.severity]
   const remaining = need.requiredQuantity - need.currentQuantity
 
   return (
     <motion.div
+      layoutId={layoutId}
       whileHover={{ y: -5 }}
-      transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      className="h-full"
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="h-full bg-white rounded-xl"
     >
-      <Card className="flex flex-col h-full hover:shadow-lg transition-all cursor-pointer" onClick={() => onClick(need)}>
+      <motion.div
+        animate={{ opacity: isSelected ? 0 : 1 }}
+        transition={{ duration: 0.05 }}
+        className="h-full"
+      >
+        <Card className="flex flex-col h-full hover:shadow-lg transition-all cursor-pointer" onClick={() => onClick(need)}>
         <CardHeader className="p-4 pb-2">
           {/* ... existing content ... */}
           <div className="flex justify-between items-start gap-2">
@@ -111,6 +119,7 @@ export function NeedCard({ need, onClick }: NeedCardProps) {
           </Button>
         </CardFooter>
       </Card>
+      </motion.div>
     </motion.div>
   )
 }

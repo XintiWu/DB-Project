@@ -65,30 +65,20 @@ export function ClaimDialog({ need, onClose }: ClaimDialogProps) {
   }
 
   return (
-    <motion.div 
-      className="fixed inset-0 flex items-center justify-center p-4 z-50"
-    >
+    <div className="fixed top-0 left-0 h-screen w-screen z-[9999] flex items-center justify-center p-4">
       <motion.div 
-        className="absolute inset-0 bg-black/30"
-        initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-        animate={{ opacity: 1, backdropFilter: 'blur(12px)' }}
-        exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-        transition={{ duration: 0.3 }}
+        className="absolute inset-0 bg-black/20 backdrop-blur-sm z-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.5 }}
         onClick={onClose}
       />
       <motion.div 
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl"
-        style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-          border: '1px solid rgba(255, 255, 255, 0.18)'
-        }}
+        layoutId={`need-${need.id}`}
+        className="relative z-50 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white/85 backdrop-blur-xl shadow-2xl border border-white/20"
         onClick={(e) => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ duration: 0.3, type: "spring", damping: 25, stiffness: 300 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
         <Card className="border-0 bg-transparent shadow-none">
           <CardHeader>
@@ -282,6 +272,6 @@ export function ClaimDialog({ need, onClose }: ClaimDialogProps) {
           </form>
         </Card>
       </motion.div>
-    </motion.div>
+    </div>
   )
 }
