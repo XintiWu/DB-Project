@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getUnverifiedRequests, reviewRequest } from '../api/client'
+import { getAnalytics, getUnverifiedRequests, reviewRequest, warnUser } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog'
+import { Textarea } from '../components/ui/textarea'
+import { Label } from '../components/ui/label'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Users, FileText, AlertTriangle, CheckCircle, Check, X } from 'lucide-react'
+import { Users, FileText, AlertTriangle, CheckCircle, Check, X, AlertOctagon } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -15,6 +19,11 @@ export function AdminDashboard() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Warning Dialog State
+  const [warningOpen, setWarningOpen] = useState(false)
+  const [selectedRequest, setSelectedRequest] = useState<any>(null)
+  const [warningReason, setWarningReason] = useState('')
 
   useEffect(() => {
     async function fetchData() {
@@ -46,10 +55,36 @@ export function AdminDashboard() {
       
       // Remove from list
       setPendingRequests(prev => prev.filter(r => r.request_id !== requestId))
-      alert(`已${status === 'Approved' ? '核准' : '駁回'}需求`)
+      // alert(`已${status === 'Approved' ? '核准' : '駁回'}需求`) // Removed alert for smoother flow
     } catch (err) {
       console.error('Review failed:', err)
       alert('審核失敗')
+    }
+  }
+
+  const openWarningDialog = (request: any) => {
+    setSelectedRequest(request)
+    setWarningReason('')
+    setWarningOpen(true)
+  }
+
+  const handleWarnUser = async () => {
+    if (!user || !selectedRequest || !warningReason.trim()) return
+
+    try {
+      await warnUser({
+        user_id: selectedRequest.requester_id,
+        admin_id: user.user_id,
+        reason: warningReason,
+        request_id: selectedRequest.request_id,
+        incident_id: selectedRequest.incident_id
+      })
+      
+      setWarningOpen(false)
+      alert('已發出警告')
+    } catch (err) {
+      console.error('Warning failed:', err)
+      alert('警告發送失敗')
     }
   }
 
@@ -205,70 +240,154 @@ export function AdminDashboard() {
 
         <TabsContent value="reviews" className="mt-6">
           <div className="grid gap-4">
-            {pendingRequests.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed">
-                目前沒有待審核的需求
-              </div>
-            ) : (
-              pendingRequests.map((req) => (
-                <Card key={req.request_id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{req.title}</CardTitle>
-                        <CardDescription>{new Date(req.created_at).toLocaleString()}</CardDescription>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${
-                        req.urgency === 'High' || req.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                      }`}>
-                        {req.urgency}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
+            <AnimatePresence mode="popLayout">
+              {pendingRequests.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed"
+                >
+                  目前沒有待審核的需求
+                </motion.div>
+              ) : (
+                pendingRequests.map((req) => (
+                  <motion.div
+                    layout
+                    key={req.request_id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ x: 300, opacity: 0, transition: { duration: 0.3 } }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{req.title}</CardTitle>
+                            <CardDescription>{new Date(req.created_at).toLocaleString()}</CardDescription>
+                          </div>
+                          <div className={`px-2 py-1 rounded text-xs font-medium ${
+                            req.urgency === 'High' || req.urgency === 'Critical' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {req.urgency}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
                     <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="col-span-2 grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-md">
+                        <div><span className="text-muted-foreground">Request ID:</span> <span className="font-mono">{req.request_id}</span></div>
+                        <div><span className="text-muted-foreground">Requester:</span> {req.requester_name} (ID: {req.requester_id})</div>
+                        <div><span className="text-muted-foreground">Incident ID:</span> {req.incident_id}</div>
+                        <div><span className="text-muted-foreground">Status:</span> {req.status}</div>
+                        <div><span className="text-muted-foreground">Coordinates:</span> {req.latitude}, {req.longitude}</div>
+                        <div><span className="text-muted-foreground">Qty (Req/Cur):</span> {req.required_qty} / {req.current_qty}</div>
+                      </div>
+                      
                       <div>
                         <span className="text-muted-foreground">類型:</span> {req.type}
                       </div>
                       <div>
                         <span className="text-muted-foreground">地點:</span> {req.address}
                       </div>
+                      
                       <div className="col-span-2">
-                        <span className="text-muted-foreground">需求詳情:</span>
-                        <div className="mt-1 pl-2 border-l-2 border-slate-200">
-                          {req.material_items?.map((i: any) => (
-                            <div key={i.item_id}>{i.item_name} x {i.qty} {i.unit}</div>
-                          ))}
-                          {req.required_skills?.map((s: any) => (
-                            <div key={s.skill_tag_id}>需要技能: {s.skill_name} x {s.qty}</div>
-                          ))}
+                        <span className="text-muted-foreground font-medium">需求詳情:</span>
+                        <div className="mt-2 space-y-2 pl-2 border-l-2 border-slate-200">
+                          {req.material_items?.length > 0 && (
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">物資:</div>
+                              {req.material_items.map((i: any) => (
+                                <div key={i.item_id} className="ml-2">{i.item_name} x {i.qty} {i.unit}</div>
+                              ))}
+                            </div>
+                          )}
+                          {req.required_skills?.length > 0 && (
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">人力技能:</div>
+                              {req.required_skills.map((s: any) => (
+                                <div key={s.skill_tag_id} className="ml-2">{s.skill_name} x {s.qty}</div>
+                              ))}
+                            </div>
+                          )}
+                          {req.required_equipments?.length > 0 && (
+                            <div>
+                              <div className="text-xs text-muted-foreground mb-1">設備:</div>
+                              {req.required_equipments.map((e: any) => (
+                                <div key={e.equipment_id} className="ml-2">{e.equipment_name} x {e.qty}</div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-end gap-2 bg-slate-50/50 pt-4">
-                    <Button 
-                      variant="outline" 
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                      onClick={() => handleReview(req.request_id, 'Rejected')}
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      駁回
-                    </Button>
-                    <Button 
-                      className="bg-green-600 hover:bg-green-700"
-                      onClick={() => handleReview(req.request_id, 'Approved')}
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      核准
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))
-            )}
+                      <CardFooter className="flex justify-end gap-2 bg-slate-50/50 pt-4">
+                        <Button 
+                          variant="outline" 
+                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 border-amber-200 mr-auto"
+                          onClick={() => openWarningDialog(req)}
+                        >
+                          <AlertOctagon className="mr-2 h-4 w-4" />
+                          警告用戶
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          onClick={() => handleReview(req.request_id, 'Rejected')}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          駁回
+                        </Button>
+                        <Button 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleReview(req.request_id, 'Approved')}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          核准
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={warningOpen} onOpenChange={setWarningOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-amber-600 mb-2">
+              <AlertOctagon className="h-6 w-6" />
+              <DialogTitle className="text-xl">發出使用者警告</DialogTitle>
+            </div>
+            <DialogDescription>
+              您即將對使用者 <span className="font-medium text-slate-900">{selectedRequest?.requester_name || 'Unknown'}</span> 發出警告。
+              此操作將被記錄在系統中，且無法撤銷。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-right">
+                警告原因
+              </Label>
+              <Textarea
+                id="reason"
+                placeholder="請詳細說明警告原因，例如：發布虛假需求、惡意洗版..."
+                value={warningReason}
+                onChange={(e) => setWarningReason(e.target.value)}
+                className="col-span-3 min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWarningOpen(false)}>取消</Button>
+            <Button variant="destructive" onClick={handleWarnUser}>確認發送警告</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

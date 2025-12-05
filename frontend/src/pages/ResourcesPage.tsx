@@ -3,6 +3,7 @@ import { getAllInventories, getAllItems, getInventoryItems } from '../api/client
 import type { Inventory, Item } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { MapPin, Package, Warehouse, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -185,26 +186,40 @@ export function ResourcesPage() {
                 {loadingItems ? (
                   <div className="text-center py-8 text-slate-500">載入庫存中...</div>
                 ) : inventoryItems.length > 0 ? (
-                  <div className="grid gap-4">
-                    {inventoryItems.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/50 bg-white/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                            {item.qty}
-                          </div>
-                          <div>
-                            <p className="font-medium text-slate-900">{item.item_name}</p>
-                            <p className="text-xs text-slate-500">
-                              {item.category_name} • ID: {item.item_id}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm text-slate-600">
-                          {item.unit}
-                        </div>
+                  <Tabs defaultValue="all" className="w-full">
+                    <TabsList className="mb-4 flex flex-wrap h-auto gap-2 bg-transparent p-0 justify-start">
+                      <TabsTrigger value="all" className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200">
+                        全部 ({inventoryItems.length})
+                      </TabsTrigger>
+                      {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
+                        <TabsTrigger 
+                          key={cat} 
+                          value={cat}
+                          className="data-[state=active]:bg-indigo-100 data-[state=active]:text-indigo-700 border border-transparent data-[state=active]:border-indigo-200"
+                        >
+                          {cat} ({inventoryItems.filter(i => i.category_name === cat).length})
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+
+                    <TabsContent value="all" className="mt-0">
+                      <div className="grid gap-4">
+                        {inventoryItems.map((item, idx) => (
+                          <InventoryItemCard key={idx} item={item} />
+                        ))}
                       </div>
+                    </TabsContent>
+
+                    {Array.from(new Set(inventoryItems.map(i => i.category_name))).map((cat: any) => (
+                      <TabsContent key={cat} value={cat} className="mt-0">
+                        <div className="grid gap-4">
+                          {inventoryItems.filter(i => i.category_name === cat).map((item, idx) => (
+                            <InventoryItemCard key={idx} item={item} />
+                          ))}
+                        </div>
+                      </TabsContent>
                     ))}
-                  </div>
+                  </Tabs>
                 ) : (
                   <div className="text-center py-12 text-slate-500 bg-slate-50/50 rounded-lg border border-dashed border-slate-200">
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -225,6 +240,27 @@ export function ResourcesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+function InventoryItemCard({ item }: { item: any }) {
+  return (
+    <div className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/50 bg-white/30 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+          {item.qty}
+        </div>
+        <div>
+          <p className="font-medium text-slate-900">{item.item_name}</p>
+          <p className="text-xs text-slate-500">
+            {item.category_name} • ID: {item.item_id}
+          </p>
+        </div>
+      </div>
+      <div className="text-sm text-slate-600">
+        {item.unit}
+      </div>
     </div>
   )
 }

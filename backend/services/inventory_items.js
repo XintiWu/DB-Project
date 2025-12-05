@@ -108,3 +108,28 @@ export const deleteInventoryItem = async (data) => {
     throw error;
   }
 };
+
+/**
+ * Get Inventory Items by Inventory ID
+ */
+export const getInventoryItemsByInventoryId = async (inventory_id) => {
+  try {
+    const sql = `
+      SELECT 
+        i.*,                
+        ic.category_name,   
+        inv_i.qty,          
+        inv_i.updated_at    
+      FROM "INVENTORY_ITEMS" inv_i
+      JOIN "ITEMS" i ON inv_i.item_id = i.item_id
+      JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+      WHERE inv_i.inventory_id = $1
+    `;
+    
+    const { rows } = await pool.query(sql, [inventory_id]);
+    return rows;
+  } catch (error) {
+    console.error('Error getting inventory items by inventory id:', error);
+    throw error;
+  }
+};

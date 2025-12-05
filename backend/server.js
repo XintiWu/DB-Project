@@ -23,6 +23,7 @@ import areaRoute from "./routes/area.js";
 import skillTagsRoute from "./routes/skill_tags.js";
 import analyticsRoute from "./routes/analytics.js";
 import authRoute from "./routes/auth.js";
+import warningsRoute from "./routes/warnings.js";
 
 const app = express();
 app.use(cors());
@@ -56,6 +57,7 @@ app.use("/api/shelters", sheltersRoute);
 app.use("/api/area", areaRoute);
 app.use("/api/skill-tags", skillTagsRoute);
 app.use("/api/analytics", analyticsRoute);
+app.use("/api/warnings", warningsRoute);
 
 // Start
 app.listen(3000, () => {

@@ -126,3 +126,21 @@ export function reviewRequest(requestId: string, data: any) {
   });
 }
 
+export function getSearchAnalytics() {
+  return request<any>("/analytics/search");
+}
+
+export function logSearch(data: any) {
+  return request<any>("/analytics/log-search", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function warnUser(data: any) {
+  return request<any>("/warnings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+

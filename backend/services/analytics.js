@@ -1,4 +1,25 @@
 import { pool } from '../db.js';
+import * as searchLogsService from './search_logs.js';
+
+// ... existing code ...
+
+export const getSearchAnalytics = async () => {
+  try {
+    const [trending, unmet] = await Promise.all([
+      searchLogsService.getTrendingKeywords(),
+      searchLogsService.getUnmetDemands()
+    ]);
+    
+    return { trending, unmet };
+  } catch (error) {
+    console.error('Error getting search analytics:', error);
+    throw error;
+  }
+};
+
+export const logSearch = async (data) => {
+  return searchLogsService.logSearch(data);
+};
 
 /**
  * Get Overall System Statistics

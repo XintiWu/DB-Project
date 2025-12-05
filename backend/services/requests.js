@@ -35,8 +35,10 @@ const BASE_QUERY = `
       FROM "REQUEST_EQUIPMENTS" re
       JOIN "ITEMS" i ON re.required_equipment = i.item_id
       WHERE re.request_id = r.request_id
-    ) AS required_equipments
+    ) AS required_equipments,
+    u.username as requester_name
   FROM "REQUESTS" r
+  LEFT JOIN "USERS" u ON r.requester_id = u.user_id
 `;
 
 /**

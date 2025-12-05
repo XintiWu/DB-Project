@@ -13,10 +13,13 @@ router.get("/", async (req, res) => {
         });
         return res.json(result);
     }
-    // TODO: Add generic get all or get by inventory_id only?
-    // Service missing getInventoryItemsByInventoryId.
-    // For now return not implemented if no params
-    res.status(501).json({ error: "Please provide inventory_id and category_id" });
+    
+    if (req.query.inventory_id) {
+        const result = await service.getInventoryItemsByInventoryId(req.query.inventory_id);
+        return res.json(result);
+    }
+
+    res.status(501).json({ error: "Please provide inventory_id" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

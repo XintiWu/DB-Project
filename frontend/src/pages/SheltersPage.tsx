@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAllShelters } from '../api/client'
+import { getAllShelters, logSearch } from '../api/client'
 import type { Shelter } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Input } from '../components/ui/input'
@@ -27,6 +27,25 @@ export function SheltersPage() {
     }
     fetchData()
   }, [])
+
+  // Debounce search logging
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.trim()) {
+        const resultsCount = shelters.filter(s => 
+          s.address.includes(searchQuery) || s.name.includes(searchQuery)
+        ).length;
+        
+        logSearch({
+          keyword: searchQuery,
+          filters: { type: 'Shelter' },
+          results_count: resultsCount
+        });
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, shelters]);
 
   if (loading) return <div className="text-center py-12">載入中...</div>
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>

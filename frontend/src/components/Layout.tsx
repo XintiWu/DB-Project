@@ -24,7 +24,7 @@ function AuthButtons() {
     return (
       <div className="flex items-center gap-3">
         <Link to="/profile" className="text-sm font-medium text-slate-700 hover:text-blue-600 transition-colors">
-          Hi, {user.name}
+          Hi, {user.name} ({user.role})
         </Link>
         <button 
           onClick={logout}
