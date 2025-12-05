@@ -2,24 +2,67 @@ import { pool } from '../db.js';
 
 /**
  * Create a new provision record
- * Table: PROVIDES
+ * Table: PROVIDES + INVENTORY_ITEMS
+ * Uses Transaction to ensure:
+ * 1. Create provision record
+ * 2. Add quantity to inventory (or create new inventory item if not exists)
  */
 export const createProvide = async (data) => {
-  const { user_id, item_id, qty } = data;
+  const { user_id, item_id, qty, inventory_id } = data;
+
+  if (!inventory_id) {
+    throw new Error('必須指定庫存 ID (inventory_id)');
+  }
+
+  const client = await pool.connect();
 
   try {
-    const sql = `
+    await client.query('BEGIN');
+
+    // 1. Create provision record
+    const insertProvideSql = `
       INSERT INTO "PROVIDES" (user_id, item_id, qty, provide_date)
       VALUES ($1, $2, $3, NOW())
       RETURNING *;
     `;
-    
-    const { rows } = await pool.query(sql, [user_id, item_id, qty]);
-    return rows[0];
+    const provideResult = await client.query(insertProvideSql, [user_id, item_id, qty]);
+
+    // 2. Check if item exists in inventory
+    const checkInventorySql = `
+      SELECT qty 
+      FROM "INVENTORY_ITEMS"
+      WHERE inventory_id = $1 AND item_id = $2;
+    `;
+    const checkResult = await client.query(checkInventorySql, [inventory_id, item_id]);
+
+    if (checkResult.rows.length > 0) {
+      // Item exists, update quantity
+      const updateInventorySql = `
+        UPDATE "INVENTORY_ITEMS"
+        SET qty = qty + $1, updated_at = NOW()
+        WHERE inventory_id = $2 AND item_id = $3
+        RETURNING qty;
+      `;
+      await client.query(updateInventorySql, [qty, inventory_id, item_id]);
+    } else {
+      // Item doesn't exist, insert new record
+      const insertInventorySql = `
+        INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at)
+        VALUES ($1, $2, $3, NOW())
+        RETURNING *;
+      `;
+      await client.query(insertInventorySql, [inventory_id, item_id, qty]);
+    }
+
+    await client.query('COMMIT');
+    return provideResult.rows[0];
 
   } catch (error) {
-    console.error('Error creating provide record:', error);
+    await client.query('ROLLBACK');
+    console.error('Error creating provide record with transaction:', error);
     throw error;
+  } finally {
+    client.release();
   }
 };
 
