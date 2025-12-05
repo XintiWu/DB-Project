@@ -7,10 +7,11 @@ import { motion } from 'framer-motion'
 interface WarehouseCardProps {
   warehouse: any
   onClick: (warehouse: any) => void
+  onDonate?: (warehouse: any) => void
   layoutId?: string
 }
 
-export function WarehouseCard({ warehouse, onClick, layoutId }: WarehouseCardProps) {
+export function WarehouseCard({ warehouse, onClick, onDonate, layoutId }: WarehouseCardProps) {
   const isInactive = warehouse.status === 'Inactive'
 
   return (
@@ -53,7 +54,6 @@ export function WarehouseCard({ warehouse, onClick, layoutId }: WarehouseCardPro
                     <Package className="w-4 h-4" />
                     <span>庫存物品</span>
                 </div>
-                {/* We don't have item count in basic list API usually, but if we did/do: */}
                 <span className="font-medium">-- 項目</span>
             </div>
              <div className="flex justify-between items-center text-slate-600">
@@ -70,7 +70,16 @@ export function WarehouseCard({ warehouse, onClick, layoutId }: WarehouseCardPro
           </div>
         </CardContent>
 
-        <CardFooter className="p-4 pt-0">
+        <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-2">
+          <Button 
+            className="w-full bg-slate-900 text-white hover:bg-slate-800"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onDonate) onDonate(warehouse);
+            }}
+          >
+             提供物資
+          </Button>
           <Button 
             variant="outline"
             className="w-full border-blue-200 text-blue-600 hover:bg-blue-50"

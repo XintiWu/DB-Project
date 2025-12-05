@@ -40,7 +40,7 @@ CREATE TABLE public."INVENTORIES" (
     status character varying(20) NOT NULL,
     address character varying(100) NOT NULL,
     name character varying(100) DEFAULT 'My Warehouse'::character varying NOT NULL,
-    CONSTRAINT "INVENTORIES_status_check" CHECK (((status)::text = ANY (ARRAY[('Active'::character varying)::text, ('Inactive'::character varying)::text])))
+    CONSTRAINT "INVENTORIES_status_check" CHECK (((status)::text = ANY (ARRAY[('Public'::character varying)::text, ('Private'::character varying)::text, ('Inactive'::character varying)::text])))
 );
 
 CREATE TABLE public."INVENTORY_ITEMS" (

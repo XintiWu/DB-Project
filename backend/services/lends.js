@@ -8,49 +8,99 @@ import { pool } from '../db.js';
  * 2. Deduct inventory quantity (with row lock)
  * 3. Create lending record
  */
+/**
+ * Create a new lending record (Borrow or Lend)
+ * Table: LENDS + INVENTORY_ITEMS
+ * Type: 'BORROW' (Warehouse -> User) or 'LEND' (User -> Warehouse)
+ * Status: 'Active' (Immediate) or 'Pending' (Request)
+ */
 export const createLend = async (data) => {
-  const { user_id, item_id, qty, from_inventory_id } = data;
+  const { user_id, item_id, qty, from_inventory_id, type = 'BORROW', status = 'Borrowing' } = data;
 
   const client = await pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // 1. Check and lock inventory item (FOR UPDATE locks the row)
-    const checkSql = `
-      SELECT qty 
-      FROM "INVENTORY_ITEMS"
-      WHERE inventory_id = $1 AND item_id = $2
-      FOR UPDATE;
-    `;
-    const checkResult = await client.query(checkSql, [from_inventory_id, item_id]);
-    
-    if (checkResult.rows.length === 0) {
-      throw new Error('此庫存中沒有該物品');
+    // If Pending, just create record, don't touch inventory yet
+    if (status === 'Pending') {
+        const insertLendSql = `
+          INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status)
+          VALUES ($1, $2, $3, $4, NOW(), $5, $6)
+          RETURNING *;
+        `;
+        const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type, status]);
+        await client.query('COMMIT');
+        return lendResult.rows[0];
     }
 
-    const currentQty = checkResult.rows[0].qty;
-    
-    if (currentQty < qty) {
-      throw new Error(`庫存不足：目前庫存 ${currentQty}，需要 ${qty}`);
-    }
+    if (type === 'BORROW') {
+        // --- BORROW: User borrows from Warehouse (Inventory Decreases) ---
+        // 1. Check and lock inventory item
+        const checkSql = `
+        SELECT qty 
+        FROM "INVENTORY_ITEMS"
+        WHERE inventory_id = $1 AND item_id = $2
+        FOR UPDATE;
+        `;
+        const checkResult = await client.query(checkSql, [from_inventory_id, item_id]);
+        
+        if (checkResult.rows.length === 0) {
+        throw new Error('此庫存中沒有該物品');
+        }
 
-    // 2. Deduct inventory quantity
-    const updateInventorySql = `
-      UPDATE "INVENTORY_ITEMS"
-      SET qty = qty - $1, updated_at = NOW()
-      WHERE inventory_id = $2 AND item_id = $3
-      RETURNING qty;
-    `;
-    await client.query(updateInventorySql, [qty, from_inventory_id, item_id]);
+        const currentQty = checkResult.rows[0].qty;
+        
+        if (currentQty < qty) {
+        throw new Error(`庫存不足：目前庫存 ${currentQty}，需要 ${qty}`);
+        }
+
+        // 2. Deduct inventory quantity
+        const updateInventorySql = `
+        UPDATE "INVENTORY_ITEMS"
+        SET qty = qty - $1, updated_at = NOW()
+        WHERE inventory_id = $2 AND item_id = $3
+        RETURNING qty;
+        `;
+        await client.query(updateInventorySql, [qty, from_inventory_id, item_id]);
+
+    } else if (type === 'LEND') {
+        // --- LEND: User lends TO Warehouse (Inventory Increases) ---
+        // 1. Check if item exists (UPSERT logic)
+        const checkSql = `
+        SELECT qty FROM "INVENTORY_ITEMS" 
+        WHERE inventory_id = $1 AND item_id = $2;
+        `;
+        const checkResult = await client.query(checkSql, [from_inventory_id, item_id]);
+
+        if (checkResult.rows.length > 0) {
+            // Update existing
+            const updateInventorySql = `
+            UPDATE "INVENTORY_ITEMS"
+            SET qty = qty + $1, updated_at = NOW()
+            WHERE inventory_id = $2 AND item_id = $3;
+            `;
+            await client.query(updateInventorySql, [qty, from_inventory_id, item_id]);
+        } else {
+            // Insert new
+            const insertInventorySql = `
+            INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
+            VALUES ($1, $2, $3, NOW(), 'Active'); 
+            `;
+            // NOTE: INVENTORY_ITEMS status is different from LENDS status. Assuming "Active" is correct for INVENTORY_ITEMS.
+            await client.query(insertInventorySql, [from_inventory_id, item_id, qty]);
+        }
+    } else {
+        throw new Error('Invalid lend type');
+    }
 
     // 3. Create lending record
     const insertLendSql = `
-      INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at)
-      VALUES ($1, $2, $3, $4, NOW())
+      INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status)
+      VALUES ($1, $2, $3, $4, NOW(), $5, 'Borrowing')
       RETURNING *;
     `;
-    const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id]);
+    const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type]);
 
     await client.query('COMMIT');
     return lendResult.rows[0];
@@ -65,12 +115,116 @@ export const createLend = async (data) => {
 };
 
 /**
+ * Approve a Pending Lend Request
+ */
+export const approveLend = async (data) => {
+    const { lend_id } = data;
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // 1. Get Lend Record
+        const lendSql = 'SELECT * FROM "LENDS" WHERE lend_id = $1 FOR UPDATE';
+        const lendRes = await client.query(lendSql, [lend_id]);
+        
+        if (lendRes.rows.length === 0) throw new Error('借用申請不存在');
+        const lend = lendRes.rows[0];
+
+        if (lend.status !== 'Pending') throw new Error(`無法核准: 狀態為 ${lend.status}`);
+        if (lend.type !== 'BORROW') throw new Error('目前僅支援核准借用 (BORROW) 請求');
+
+        // 2. Check and Deduct Inventory
+        const checkSql = `
+            SELECT qty 
+            FROM "INVENTORY_ITEMS"
+            WHERE inventory_id = $1 AND item_id = $2
+            FOR UPDATE;
+        `;
+        const invRes = await client.query(checkSql, [lend.from_inventory_id, lend.item_id]);
+        
+        if (invRes.rows.length === 0 || invRes.rows[0].qty < lend.qty) {
+             throw new Error(`庫存不足，無法核准 (需求: ${lend.qty}, 目前: ${invRes.rows.length > 0 ? invRes.rows[0].qty : 0})`);
+        }
+
+        const updateInvSql = `
+            UPDATE "INVENTORY_ITEMS"
+            SET qty = qty - $1, updated_at = NOW()
+            WHERE inventory_id = $2 AND item_id = $3;
+        `;
+        await client.query(updateInvSql, [lend.qty, lend.from_inventory_id, lend.item_id]);
+
+        // 3. Update Lend Status
+        const updateLendSql = `
+            UPDATE "LENDS"
+            SET status = 'Borrowing', lend_at = NOW()
+            WHERE lend_id = $1
+            RETURNING *;
+        `;
+        const result = await client.query(updateLendSql, [lend_id]);
+
+        await client.query('COMMIT');
+        return result.rows[0];
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error approving lend:', error);
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Reject a Pending Lend Request
+ */
+export const rejectLend = async (data) => {
+    const { lend_id } = data;
+    try {
+        const sql = `
+            UPDATE "LENDS"
+            SET status = 'Rejected'
+            WHERE lend_id = $1 AND status = 'Pending'
+            RETURNING *;
+        `;
+        const { rows } = await pool.query(sql, [lend_id]);
+        if (rows.length === 0) {
+             throw new Error('找不到可拒絕的申請 (可能已處理或不存在)');
+        }
+        return rows[0];
+    } catch (error) {
+        console.error('Error rejecting lend:', error);
+        throw error;
+    }
+};
+
+/**
+ * Get Lends (Requests) by Inventory ID
+ * Used by Warehouse Owner to manage requests
+ */
+export const getLendsByInventoryId = async (inventory_id) => {
+    try {
+        const sql = `
+            SELECT l.*, u.name as user_name, i.item_name
+            FROM "LENDS" l
+            JOIN "USERS" u ON l.user_id = u.user_id
+            JOIN "ITEMS" i ON l.item_id = i.item_id
+            WHERE l.from_inventory_id = $1
+            ORDER BY 
+                CASE WHEN l.status = 'Pending' THEN 0 ELSE 1 END,
+                l.lend_at DESC;
+        `;
+        const { rows } = await pool.query(sql, [inventory_id]);
+        return rows;
+    } catch (error) {
+        console.error('Error getting inventory lends:', error);
+        throw error;
+    }
+};
+
+/**
  * Mark a lent item as returned
- * Table: LENDS + INVENTORY_ITEMS
- * Uses Transaction to ensure:
- * 1. Get lending record details
- * 2. Update returned_at timestamp
- * 3. Return quantity to inventory
+ * Logic depends on 'type' in LENDS record
  */
 export const returnLend = async (data) => {
   const { lend_id } = data;
@@ -82,7 +236,7 @@ export const returnLend = async (data) => {
 
     // 1. Get lending record (must not be already returned)
     const getLendSql = `
-      SELECT item_id, qty, from_inventory_id, returned_at
+      SELECT item_id, qty, from_inventory_id, returned_at, type
       FROM "LENDS"
       WHERE lend_id = $1
       FOR UPDATE;
@@ -102,24 +256,56 @@ export const returnLend = async (data) => {
     // 2. Update returned_at
     const updateLendSql = `
       UPDATE "LENDS"
-      SET returned_at = NOW()
+      SET returned_at = NOW(), status = 'Returned'
       WHERE lend_id = $1
       RETURNING *;
     `;
     const updateResult = await client.query(updateLendSql, [lend_id]);
 
-    // 3. Return quantity to inventory
-    const updateInventorySql = `
-      UPDATE "INVENTORY_ITEMS"
-      SET qty = qty + $1, updated_at = NOW()
-      WHERE inventory_id = $2 AND item_id = $3
-      RETURNING qty;
-    `;
-    await client.query(updateInventorySql, [
-      lendRecord.qty, 
-      lendRecord.from_inventory_id, 
-      lendRecord.item_id
-    ]);
+    // 3. Adjust inventory based on Type
+    if (lendRecord.type === 'BORROW' || !lendRecord.type) { // Default BORROW
+        // User borrowed, now returning -> Inventory Increases
+        // (Use UPSERT in case it was deleted? Unlikely but safer)
+        const checkSql = `SELECT qty FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2`;
+        const checkRes = await client.query(checkSql, [lendRecord.from_inventory_id, lendRecord.item_id]);
+        
+        if (checkRes.rows.length > 0) {
+             const updateInventorySql = `
+                UPDATE "INVENTORY_ITEMS"
+                SET qty = qty + $1, updated_at = NOW()
+                WHERE inventory_id = $2 AND item_id = $3;
+            `;
+            await client.query(updateInventorySql, [lendRecord.qty, lendRecord.from_inventory_id, lendRecord.item_id]);
+        } else {
+             const insertInventorySql = `
+                INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
+                VALUES ($1, $2, $3, NOW(), 'Active');
+            `;
+            await client.query(insertInventorySql, [lendRecord.from_inventory_id, lendRecord.item_id, lendRecord.qty]);
+        }
+
+    } else if (lendRecord.type === 'LEND') {
+        // User lent to warehouse, now "returning" (taking back) -> Inventory Decreases
+        // Check if sufficient
+        const checkInventorySql = `
+            SELECT qty FROM "INVENTORY_ITEMS"
+            WHERE inventory_id = $1 AND item_id = $2
+            FOR UPDATE;
+        `;
+        const invRes = await client.query(checkInventorySql, [lendRecord.from_inventory_id, lendRecord.item_id]);
+        const currentQty = invRes.rows.length > 0 ? invRes.rows[0].qty : 0;
+
+        if (currentQty < lendRecord.qty) {
+            throw new Error(`無法歸還(取回)：倉庫目前庫存不足 (${currentQty} < ${lendRecord.qty})`);
+        }
+
+        const updateInventorySql = `
+            UPDATE "INVENTORY_ITEMS"
+            SET qty = qty - $1, updated_at = NOW()
+            WHERE inventory_id = $2 AND item_id = $3;
+        `;
+        await client.query(updateInventorySql, [lendRecord.qty, lendRecord.from_inventory_id, lendRecord.item_id]);
+    }
 
     await client.query('COMMIT');
     return updateResult.rows[0];

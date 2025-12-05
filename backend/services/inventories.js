@@ -22,7 +22,7 @@ export const createInventory = async (data) => {
     // 1. CREATE INVENTORY
     const insertInventorySql = `
       INSERT INTO "INVENTORIES" (address, name, status)
-      VALUES ($1, $2, 'Active')
+      VALUES ($1, $2, 'Private')
       RETURNING inventory_id;
     `;
     const inventoryResult = await client.query(insertInventorySql, [address, data.name || 'New Warehouse']); //DB assigns new inventory id
@@ -118,11 +118,88 @@ export const searchInventoryByInventoryId = async (data) => {
 };
 
 /**
+ * Transfer inventory item from one warehouse to another (Donation/Transfer)
+ */
+export const transferInventory = async (data) => {
+  const { from_inventory_id, to_inventory_id, item_id, qty } = data;
+
+  if (from_inventory_id == to_inventory_id) {
+    throw new Error('來源與目的倉庫不能相同');
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const checkSourceSql = `
+      SELECT qty FROM "INVENTORY_ITEMS"
+      WHERE inventory_id = $1 AND item_id = $2
+      FOR UPDATE;
+    `;
+    const sourceRes = await client.query(checkSourceSql, [from_inventory_id, item_id]);
+
+    if (sourceRes.rows.length === 0 || sourceRes.rows[0].qty < qty) {
+      throw new Error(`來源倉庫庫存不足 (目前: ${sourceRes.rows.length > 0 ? sourceRes.rows[0].qty : 0})`);
+    }
+
+    // 1.5 Check Target Inventory Exists
+    const checkTargetInvSql = 'SELECT inventory_id FROM "INVENTORIES" WHERE inventory_id = $1';
+    const targetInvRes = await client.query(checkTargetInvSql, [to_inventory_id]);
+    if (targetInvRes.rows.length === 0) {
+        throw new Error(`目標倉庫 ID (${to_inventory_id}) 不存在`);
+    }
+
+    // 2. Deduct from Source
+    const deductSql = `
+      UPDATE "INVENTORY_ITEMS"
+      SET qty = qty - $1, updated_at = NOW()
+      WHERE inventory_id = $2 AND item_id = $3;
+    `;
+    await client.query(deductSql, [qty, from_inventory_id, item_id]);
+
+    // 3. Add to Target (UPSERT)
+    // Check if item exists in target
+    const checkTargetSql = `
+      SELECT qty FROM "INVENTORY_ITEMS"
+      WHERE inventory_id = $1 AND item_id = $2;
+    `;
+    const targetRes = await client.query(checkTargetSql, [to_inventory_id, item_id]);
+
+    if (targetRes.rows.length > 0) {
+      const updateTargetSql = `
+        UPDATE "INVENTORY_ITEMS"
+        SET qty = qty + $1, updated_at = NOW()
+        WHERE inventory_id = $2 AND item_id = $3;
+      `;
+      await client.query(updateTargetSql, [qty, to_inventory_id, item_id]);
+    } else {
+      const insertTargetSql = `
+        INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
+        VALUES ($1, $2, $3, NOW(), 'Active');
+      `;
+      await client.query(insertTargetSql, [to_inventory_id, item_id, qty]);
+    }
+
+    await client.query('COMMIT');
+    return { success: true, message: `Successfully transferred ${qty} of item ${item_id} from ${from_inventory_id} to ${to_inventory_id}` };
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error transferring inventory:', error);
+    logError('[Service] transferInventory', error); // Ensure it goes to file
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * Get All Inventories
  */
 export const getAllInventories = async () => {
   try {
-    const sql = 'SELECT * FROM "INVENTORIES" ORDER BY inventory_id ASC';
+    const sql = 'SELECT * FROM "INVENTORIES" WHERE status = \'Public\' ORDER BY inventory_id ASC';
     const { rows } = await pool.query(sql);
     return rows;
   } catch (error) {

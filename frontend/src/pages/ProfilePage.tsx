@@ -8,9 +8,10 @@ import { Label } from '../components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { NeedCard } from '../components/NeedCard'
 import { parseNeed } from '../lib/utils'
-import { MapPin, Calendar, Warehouse, Plus, Settings } from 'lucide-react'
+import { MapPin, Calendar, Warehouse, Plus } from 'lucide-react'
 import { WarehouseManagerDialog } from '../components/WarehouseManagerDialog'
 import { WarehouseCard } from '../components/WarehouseCard'
+import { DonateDialog } from '../components/DonateDialog'
 
 export function ProfilePage() {
   const { user, login } = useAuth()
@@ -18,10 +19,10 @@ export function ProfilePage() {
   const [incidents, setIncidents] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [inventories, setInventories] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
   
   // Warehouse Dialog State
   const [isManagerOpen, setIsManagerOpen] = useState(false)
+  const [isDonateOpen, setIsDonateOpen] = useState(false)
   const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null)
   
   // Create Warehouse Form (Inline or Dialog? Let's do simple inline prompt for now, or simple creation)
@@ -50,7 +51,6 @@ export function ProfilePage() {
 
   const fetchUserData = async () => {
     if (!user) return
-    setLoading(true)
     try {
       const [incidentsData, requestsData, inventoriesData] = await Promise.all([
         getUserIncidents(user.user_id),
@@ -63,7 +63,6 @@ export function ProfilePage() {
     } catch (error) {
       console.error('Error fetching user data:', error)
     } finally {
-      setLoading(false)
     }
   }
 
@@ -279,7 +278,11 @@ export function ProfilePage() {
                              <WarehouseCard 
                                 key={inv.inventory_id} 
                                 warehouse={inv} 
-                                onClick={openManager} 
+                                onClick={openManager}
+                                onDonate={() => {
+                                    setSelectedWarehouse(inv)
+                                    setIsDonateOpen(true)
+                                }}
                              />
                         ))
                     )}
@@ -289,12 +292,19 @@ export function ProfilePage() {
 
       </Tabs>
       
-      {/* Management Dialog */}
+      {/* Dialogs */}
       <WarehouseManagerDialog 
         isOpen={isManagerOpen} 
         onClose={() => setIsManagerOpen(false)} 
         warehouse={selectedWarehouse}
         onUpdate={fetchUserData}
+      />
+
+      <DonateDialog 
+          isOpen={isDonateOpen}
+          onClose={() => setIsDonateOpen(false)}
+          warehouse={selectedWarehouse}
+          userId={user?.user_id || 0}
       />
     </div>
   )

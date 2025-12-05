@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { 
   updateInventory, 
   getInventoryItems, 
@@ -14,18 +13,16 @@ import {
   getInventoryOwners,
   addInventoryOwner,
   removeInventoryOwner,
-  getAllItems
+  approveLend,
+  rejectLend,
+  getAllItems,
+  getWarehouseLends
 } from '../api/client'
-import { Trash2, Plus, Save, Users, Package, Settings, Search } from 'lucide-react'
-import { ALL_CATEGORIES } from '../lib/constants'
+import { Package, Save, Trash2, Plus, ArrowRightLeft, Settings, Users } from "lucide-react"
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select"
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import { TransferDialog } from "./TransferDialog"
 
 interface WarehouseManagerProps {
   isOpen: boolean
@@ -36,10 +33,12 @@ interface WarehouseManagerProps {
 
 export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }: WarehouseManagerProps) {
   const [activeTab, setActiveTab] = useState('items')
+  const [transferItem, setTransferItem] = useState<any>(null)
+
+  const [lends, setLends] = useState<any[]>([])
   const [items, setItems] = useState<any[]>([])
   const [owners, setOwners] = useState<any[]>([])
   const [allItems, setAllItems] = useState<any[]>([]) // For adding new items
-  const [loading, setLoading] = useState(false)
   
   // Info Form State
   const [infoForm, setInfoForm] = useState({ name: '', address: '', status: '' })
@@ -60,11 +59,11 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
       })
       fetchDetails()
       fetchAllSystemItems()
+      fetchLends()
     }
   }, [warehouse, isOpen])
 
   const fetchDetails = async () => {
-    setLoading(true)
     try {
       const [itemsData, ownersData] = await Promise.all([
         getInventoryItems(warehouse.inventory_id),
@@ -74,9 +73,38 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
       setOwners(ownersData)
     } catch (error) {
       console.error('Error fetching warehouse details:', error)
-    } finally {
-      setLoading(false)
     }
+  }
+
+  const fetchLends = async () => {
+      try {
+          const res = await getWarehouseLends(warehouse.inventory_id)
+          setLends(res)
+      } catch (e) {
+          console.error(e)
+      }
+  }
+
+  const handleApproveLend = async (lendId: number) => {
+      try {
+          await approveLend(lendId)
+          alert('核准成功')
+          fetchLends()
+          fetchDetails() // Update inventory qty
+      } catch (e: any) {
+          alert('核准失敗: ' + e.message)
+      }
+  }
+
+  const handleRejectLend = async (lendId: number) => {
+      if (!confirm('確定要拒絕此申請嗎？')) return
+      try {
+          await rejectLend(lendId)
+          alert('已拒絕')
+          fetchLends()
+      } catch (e: any) {
+          alert('拒絕失敗: ' + e.message)
+      }
   }
 
   const fetchAllSystemItems = async () => {
@@ -180,9 +208,52 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="items"><Package className="w-4 h-4 mr-2"/> 庫存物品</TabsTrigger>
+            <TabsTrigger value="requests"><ArrowRightLeft className="w-4 h-4 mr-2"/> 借用申請</TabsTrigger>
             <TabsTrigger value="info"><Settings className="w-4 h-4 mr-2"/> 基本資訊</TabsTrigger>
             <TabsTrigger value="team"><Users className="w-4 h-4 mr-2"/> 管理團隊</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="requests" className="space-y-4 mt-4">
+               {lends.length === 0 ? (
+                   <div className="text-center text-muted-foreground py-8">暫無借用申請</div>
+               ) : (
+                   <div className="space-y-3">
+                       {lends.map(lend => (
+                           <div key={lend.lend_id} className="p-4 border rounded-xl bg-slate-50 flex items-center justify-between">
+                               <div>
+                                   <div className="font-medium flex items-center gap-2">
+                                       {lend.item_name} 
+                                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">x{lend.qty}</span>
+                                   </div>
+                                   <div className="text-sm text-slate-500 mt-1">
+                                       申請人: {lend.user_name} (ID: {lend.user_id})
+                                   </div>
+                                   <div className="text-xs text-slate-400 mt-0.5">
+                                       {new Date(lend.lend_at).toLocaleString()}
+                                   </div>
+                               </div>
+                               <div>
+                                   {lend.status === 'Pending' ? (
+                                       <div className="flex gap-2">
+                                           <Button size="sm" variant="destructive" onClick={() => handleRejectLend(lend.lend_id)}>拒絕</Button>
+                                           <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApproveLend(lend.lend_id)}>核准</Button>
+                                       </div>
+                                   ) : (
+                                       <span className={`text-sm font-medium ${
+                                           lend.status === 'Borrowing' ? 'text-green-600' : 
+                                           lend.status === 'Rejected' ? 'text-red-600' : 'text-slate-500'
+                                       }`}>
+                                           {lend.status === 'Borrowing' ? '借用中' : 
+                                            lend.status === 'Rejected' ? '已拒絕' : 
+                                            lend.status === 'Returned' ? '已歸還' : lend.status}
+                                       </span>
+                                   )}
+                               </div>
+                           </div>
+                       ))}
+                   </div>
+               )}
+          </TabsContent>
 
           {/* ITEMS TAB */}
           <TabsContent value="items" className="space-y-4 mt-4">
@@ -239,12 +310,21 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                                 <div className="flex items-center bg-slate-100 rounded-lg p-1">
                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white hover:shadow-sm" onClick={() => handleUpdateItemQty(item.item_id, item.qty - 1)}>-</Button>
                                    <span className="w-16 text-center text-sm font-medium">{item.qty} <span className="text-xs text-muted-foreground">{item.unit}</span></span>
                                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white hover:shadow-sm" onClick={() => handleUpdateItemQty(item.item_id, item.qty + 1)}>+</Button>
                                 </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                                    onClick={() => setTransferItem(item)}
+                                >
+                                    <ArrowRightLeft className="w-4 h-4 mr-1" />
+                                    轉移
+                                </Button>
                                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full" onClick={() => handleDeleteItem(item.item_id)}>
                                     <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -279,7 +359,8 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Active">運作中 (Active)</SelectItem>
+                            <SelectItem value="Public">公開 (Public)</SelectItem>
+                            <SelectItem value="Private">私有 (Private)</SelectItem>
                             <SelectItem value="Inactive">暫停運作 (Inactive)</SelectItem>
                         </SelectContent>
                      </Select>
@@ -326,6 +407,14 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
             </div>
           </TabsContent>
         </Tabs>
+
+        <TransferDialog 
+          isOpen={!!transferItem}
+          onClose={() => setTransferItem(null)}
+          onSuccess={fetchDetails}
+          sourceInventoryId={warehouse.inventory_id}
+          item={transferItem}
+        />
       </DialogContent>
     </Dialog>
   )

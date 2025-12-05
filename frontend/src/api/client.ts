@@ -11,7 +11,7 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "API request failed");
+    throw new Error(error.message || error.error || "API request failed");
   }
 
   return response.json();
@@ -151,6 +151,10 @@ export function getMyInventories(userId: string) {
   return request<any[]>(`/inventory-owners?user_id=${userId}`);
 }
 
+export function getInventoryById(inventoryId: string | number) {
+  return request<any>(`/inventories/${inventoryId}`);
+}
+
 export function createInventory(data: any) {
   return request<any>("/inventories", {
     method: "POST",
@@ -209,5 +213,43 @@ export function updateInventoryItem(inventoryId: string | number, itemId: string
 export function deleteInventoryItem(inventoryId: string | number, itemId: string | number) {
   return request<any>(`/inventory-items/${inventoryId}/${itemId}`, {
     method: "DELETE",
+  });
+}
+// --- Lends & Provides ---
+
+export function createLend(data: any) {
+  return request<any>("/lends", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function createProvide(data: any) {
+  return request<any>("/provides", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function transferInventory(data: any) {
+  return request<any>("/inventories/transfer", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getWarehouseLends(inventoryId: string | number) {
+  return request<any[]>(`/lends/inventory/${inventoryId}`);
+}
+
+export function approveLend(lendId: string | number) {
+  return request<any>(`/lends/${lendId}/approve`, {
+    method: "PUT"
+  });
+}
+
+export function rejectLend(lendId: string | number) {
+  return request<any>(`/lends/${lendId}/reject`, {
+    method: "PUT"
   });
 }
