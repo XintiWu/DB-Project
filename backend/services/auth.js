@@ -52,7 +52,7 @@ export const login = async (data) => {
     const sql = 'SELECT * FROM "USERS" WHERE email = $1';
     const { rows } = await pool.query(sql, [email]);
     if (rows.length === 0) {
-      throw new Error('Invalid credentials');
+      throw new Error('此 Email 尚未註冊');
     }
 
     const user = rows[0];
@@ -60,12 +60,12 @@ export const login = async (data) => {
     // Check password
     if (!user.password_hash) {
         // Handle legacy users or users without password
-        throw new Error('Invalid credentials');
+        throw new Error('此帳號尚未設定密碼，請聯繫管理員');
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      throw new Error('Invalid credentials');
+      throw new Error('密碼錯誤，請重新輸入');
     }
 
     // Generate Token
