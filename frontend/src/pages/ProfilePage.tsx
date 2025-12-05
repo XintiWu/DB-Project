@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getUserRequests, getUserIncidents, updateUser } from '../api/client'
+import { getUserRequests, getUserIncidents, updateUser, getMyInventories, createInventory } from '../api/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -8,15 +8,27 @@ import { Label } from '../components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { NeedCard } from '../components/NeedCard'
 import { parseNeed } from '../lib/utils'
-import { MapPin, Calendar } from 'lucide-react'
+import { MapPin, Calendar, Warehouse, Plus, Settings } from 'lucide-react'
+import { WarehouseManagerDialog } from '../components/WarehouseManagerDialog'
+import { WarehouseCard } from '../components/WarehouseCard'
 
 export function ProfilePage() {
   const { user, login } = useAuth()
   const [activeTab, setActiveTab] = useState('profile')
   const [incidents, setIncidents] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
+  const [inventories, setInventories] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   
+  // Warehouse Dialog State
+  const [isManagerOpen, setIsManagerOpen] = useState(false)
+  const [selectedWarehouse, setSelectedWarehouse] = useState<any>(null)
+  
+  // Create Warehouse Form (Inline or Dialog? Let's do simple inline prompt for now, or simple creation)
+  // For simplicity, let's use a prompt or simple state for creation name
+  const [newWarehouseName, setNewWarehouseName] = useState('')
+  const [newWarehouseAddr, setNewWarehouseAddr] = useState('')
+
   // Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -40,12 +52,14 @@ export function ProfilePage() {
     if (!user) return
     setLoading(true)
     try {
-      const [incidentsData, requestsData] = await Promise.all([
+      const [incidentsData, requestsData, inventoriesData] = await Promise.all([
         getUserIncidents(user.user_id),
-        getUserRequests(user.user_id)
+        getUserRequests(user.user_id),
+        getMyInventories(user.user_id)
       ])
       setIncidents(incidentsData)
       setRequests(requestsData.map(parseNeed))
+      setInventories(inventoriesData)
     } catch (error) {
       console.error('Error fetching user data:', error)
     } finally {
@@ -64,10 +78,6 @@ export function ProfilePage() {
         status: 'Active'
       })
       
-      // Update local context
-      // Note: updateUser returns the updated user object
-      // We need to pass the token as well, which we can get from localStorage or context if exposed
-      // For now, let's assume token doesn't change
       const token = localStorage.getItem('disaster-relief-token') || ''
       login(updatedUser, token)
       
@@ -77,6 +87,32 @@ export function ProfilePage() {
       console.error('Error updating profile:', error)
       alert('更新失敗')
     }
+  }
+  
+  const handleCreateWarehouse = async () => {
+      if (!newWarehouseName || !newWarehouseAddr) {
+          alert('請輸入倉庫名稱與地址')
+          return
+      }
+      try {
+          await createInventory({
+              owner_id: user?.user_id,
+              name: newWarehouseName,
+              address: newWarehouseAddr
+          })
+          setNewWarehouseName('')
+          setNewWarehouseAddr('')
+          fetchUserData()
+          alert('倉庫建立成功')
+      } catch (e) {
+          console.error(e)
+          alert('建立失敗')
+      }
+  }
+
+  const openManager = (warehouse: any) => {
+      setSelectedWarehouse(warehouse)
+      setIsManagerOpen(true)
   }
 
   if (!user) return <div className="p-8 text-center">請先登入</div>
@@ -91,10 +127,11 @@ export function ProfilePage() {
       </div>
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="profile">個人資料</TabsTrigger>
           <TabsTrigger value="incidents">我的災情</TabsTrigger>
           <TabsTrigger value="requests">我的需求</TabsTrigger>
+          <TabsTrigger value="warehouses">我的倉庫</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -204,7 +241,61 @@ export function ProfilePage() {
             )}
           </div>
         </TabsContent>
+
+        {/* Warehouses Tab */}
+        <TabsContent value="warehouses" className="mt-6">
+            <div className="space-y-6">
+                {/* Create New */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">建立新倉庫</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex gap-2 items-end">
+                            <div className="space-y-1 flex-1">
+                                <Label>倉庫名稱</Label>
+                                <Input value={newWarehouseName} onChange={e => setNewWarehouseName(e.target.value)} placeholder="例如: 台北物資中心" />
+                            </div>
+                            <div className="space-y-1 flex-[2]">
+                                <Label>地址</Label>
+                                <Input value={newWarehouseAddr} onChange={e => setNewWarehouseAddr(e.target.value)} placeholder="輸入地址" />
+                            </div>
+                            <Button onClick={handleCreateWarehouse}>
+                                <Plus className="w-4 h-4 mr-2" /> 建立
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* List */}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {inventories.length === 0 ? (
+                        <div className="col-span-full text-center py-12 text-muted-foreground bg-slate-50 rounded-xl border border-dashed">
+                             <Warehouse className="w-12 h-12 mx-auto text-slate-300 mb-2" />
+                             <p>尚無管理的倉庫</p>
+                        </div>
+                    ) : (
+                        inventories.map((inv) => (
+                             <WarehouseCard 
+                                key={inv.inventory_id} 
+                                warehouse={inv} 
+                                onClick={openManager} 
+                             />
+                        ))
+                    )}
+                </div>
+            </div>
+        </TabsContent>
+
       </Tabs>
+      
+      {/* Management Dialog */}
+      <WarehouseManagerDialog 
+        isOpen={isManagerOpen} 
+        onClose={() => setIsManagerOpen(false)} 
+        warehouse={selectedWarehouse}
+        onUpdate={fetchUserData}
+      />
     </div>
   )
 }

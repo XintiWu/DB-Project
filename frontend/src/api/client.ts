@@ -144,3 +144,70 @@ export function warnUser(data: any) {
   });
 }
 
+
+// --- Warehouse Management ---
+
+export function getMyInventories(userId: string) {
+  return request<any[]>(`/inventory-owners?user_id=${userId}`);
+}
+
+export function createInventory(data: any) {
+  return request<any>("/inventories", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateInventory(inventoryId: string | number, data: any) {
+  return request<any>(`/inventories/${inventoryId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteInventory(inventoryId: string | number) {
+  return request<any>(`/inventories/${inventoryId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Warehouse Team ---
+
+export function getInventoryOwners(inventoryId: string | number) {
+  return request<any[]>(`/inventory-owners?inventory_id=${inventoryId}`);
+}
+
+export function addInventoryOwner(data: any) {
+  return request<any>("/inventory-owners", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function removeInventoryOwner(inventoryId: string | number, userId: string | number) {
+  return request<any>(`/inventory-owners/${inventoryId}/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Warehouse Items ---
+
+export function addInventoryItem(data: any) {
+  return request<any>("/inventory-items", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateInventoryItem(inventoryId: string | number, itemId: string | number, data: any) {
+  return request<any>(`/inventory-items/${inventoryId}/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteInventoryItem(inventoryId: string | number, itemId: string | number) {
+  return request<any>(`/inventory-items/${inventoryId}/${itemId}`, {
+    method: "DELETE",
+  });
+}
