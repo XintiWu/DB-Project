@@ -3,6 +3,16 @@ import * as service from "../services/lends.js";
 
 const router = express.Router();
 
+// Get lends by user ID
+router.get("/user/:user_id", async (req, res) => {
+    try {
+        const result = await service.getLendsByUserId({ user_id: req.params.user_id });
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.get("/", async (req, res) => {
   try {
     if (req.query.user_id) {

@@ -25,11 +25,11 @@ export const createLend = async (data) => {
     // If Pending, just create record, don't touch inventory yet
     if (status === 'Pending') {
         const insertLendSql = `
-          INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status)
-          VALUES ($1, $2, $3, $4, NOW(), $5, $6)
+          INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status, to_inventory_id)
+          VALUES ($1, $2, $3, $4, NOW(), $5, $6, $7)
           RETURNING *;
         `;
-        const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type, status]);
+        const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type, status, data.to_inventory_id]);
         await client.query('COMMIT');
         return lendResult.rows[0];
     }
@@ -40,7 +40,7 @@ export const createLend = async (data) => {
         const checkSql = `
         SELECT qty 
         FROM "INVENTORY_ITEMS"
-        WHERE inventory_id = $1 AND item_id = $2
+        WHERE inventory_id = $1 AND item_id = $2 AND status = 'Owned'
         FOR UPDATE;
         `;
         const checkResult = await client.query(checkSql, [from_inventory_id, item_id]);
@@ -59,7 +59,7 @@ export const createLend = async (data) => {
         const updateInventorySql = `
         UPDATE "INVENTORY_ITEMS"
         SET qty = qty - $1, updated_at = NOW()
-        WHERE inventory_id = $2 AND item_id = $3
+        WHERE inventory_id = $2 AND item_id = $3 AND status = 'Owned'
         RETURNING qty;
         `;
         await client.query(updateInventorySql, [qty, from_inventory_id, item_id]);
@@ -69,7 +69,7 @@ export const createLend = async (data) => {
         // 1. Check if item exists (UPSERT logic)
         const checkSql = `
         SELECT qty FROM "INVENTORY_ITEMS" 
-        WHERE inventory_id = $1 AND item_id = $2;
+        WHERE inventory_id = $1 AND item_id = $2 AND status = 'Owned';
         `;
         const checkResult = await client.query(checkSql, [from_inventory_id, item_id]);
 
@@ -78,14 +78,14 @@ export const createLend = async (data) => {
             const updateInventorySql = `
             UPDATE "INVENTORY_ITEMS"
             SET qty = qty + $1, updated_at = NOW()
-            WHERE inventory_id = $2 AND item_id = $3;
+            WHERE inventory_id = $2 AND item_id = $3 AND status = 'Owned';
             `;
             await client.query(updateInventorySql, [qty, from_inventory_id, item_id]);
         } else {
             // Insert new
             const insertInventorySql = `
             INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
-            VALUES ($1, $2, $3, NOW(), 'Active'); 
+            VALUES ($1, $2, $3, NOW(), 'Owned'); 
             `;
             // NOTE: INVENTORY_ITEMS status is different from LENDS status. Assuming "Active" is correct for INVENTORY_ITEMS.
             await client.query(insertInventorySql, [from_inventory_id, item_id, qty]);
@@ -96,11 +96,11 @@ export const createLend = async (data) => {
 
     // 3. Create lending record
     const insertLendSql = `
-      INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status)
-      VALUES ($1, $2, $3, $4, NOW(), $5, 'Borrowing')
+      INSERT INTO "LENDS" (user_id, item_id, qty, from_inventory_id, lend_at, type, status, to_inventory_id)
+      VALUES ($1, $2, $3, $4, NOW(), $5, 'Borrowing', $6)
       RETURNING *;
     `;
-    const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type]);
+    const lendResult = await client.query(insertLendSql, [user_id, item_id, qty, from_inventory_id, type, data.to_inventory_id]);
 
     await client.query('COMMIT');
     return lendResult.rows[0];
@@ -138,7 +138,7 @@ export const approveLend = async (data) => {
         const checkSql = `
             SELECT qty 
             FROM "INVENTORY_ITEMS"
-            WHERE inventory_id = $1 AND item_id = $2
+            WHERE inventory_id = $1 AND item_id = $2 AND status = 'Owned'
             FOR UPDATE;
         `;
         const invRes = await client.query(checkSql, [lend.from_inventory_id, lend.item_id]);
@@ -150,9 +150,33 @@ export const approveLend = async (data) => {
         const updateInvSql = `
             UPDATE "INVENTORY_ITEMS"
             SET qty = qty - $1, updated_at = NOW()
-            WHERE inventory_id = $2 AND item_id = $3;
+            WHERE inventory_id = $2 AND item_id = $3 AND status = 'Owned';
         `;
         await client.query(updateInvSql, [lend.qty, lend.from_inventory_id, lend.item_id]);
+
+        // 2.5 Add to Target Inventory (if specified) as 'Borrowed'
+        if (lend.to_inventory_id) {
+            const checkTargetSql = `
+                SELECT qty FROM "INVENTORY_ITEMS"
+                WHERE inventory_id = $1 AND item_id = $2 AND status = 'Borrowed';
+            `;
+            const targetRes = await client.query(checkTargetSql, [lend.to_inventory_id, lend.item_id]);
+
+            if (targetRes.rows.length > 0) {
+                const updateTargetSql = `
+                    UPDATE "INVENTORY_ITEMS"
+                    SET qty = qty + $1, updated_at = NOW()
+                    WHERE inventory_id = $2 AND item_id = $3 AND status = 'Borrowed';
+                `;
+                await client.query(updateTargetSql, [lend.qty, lend.to_inventory_id, lend.item_id]);
+            } else {
+                const insertTargetSql = `
+                    INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
+                    VALUES ($1, $2, $3, NOW(), 'Borrowed');
+                `;
+                await client.query(insertTargetSql, [lend.to_inventory_id, lend.item_id, lend.qty]);
+            }
+        }
 
         // 3. Update Lend Status
         const updateLendSql = `
@@ -236,7 +260,7 @@ export const returnLend = async (data) => {
 
     // 1. Get lending record (must not be already returned)
     const getLendSql = `
-      SELECT item_id, qty, from_inventory_id, returned_at, type
+      SELECT item_id, qty, from_inventory_id, returned_at, type, to_inventory_id
       FROM "LENDS"
       WHERE lend_id = $1
       FOR UPDATE;
@@ -262,24 +286,37 @@ export const returnLend = async (data) => {
     `;
     const updateResult = await client.query(updateLendSql, [lend_id]);
 
+    // 2.5 Remove from Target Inventory (if it was put there)
+    if (lendRecord.to_inventory_id) {
+         const updateTargetSql = `
+            UPDATE "INVENTORY_ITEMS"
+            SET qty = qty - $1, updated_at = NOW()
+            WHERE inventory_id = $2 AND item_id = $3 AND status = 'Borrowed';
+        `;
+        // Note: We don't delete the row if qty=0 here to keep it simple, or we could. 
+        // For 'Borrowed' items, maybe we want to keep history or maybe delete?
+        // Let's just decrement for now. Reference implementation doesn't strictly require delete.
+        await client.query(updateTargetSql, [lendRecord.qty, lendRecord.to_inventory_id, lendRecord.item_id]);
+    }
+
     // 3. Adjust inventory based on Type
     if (lendRecord.type === 'BORROW' || !lendRecord.type) { // Default BORROW
         // User borrowed, now returning -> Inventory Increases
         // (Use UPSERT in case it was deleted? Unlikely but safer)
-        const checkSql = `SELECT qty FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2`;
+        const checkSql = `SELECT qty FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2 AND status = 'Owned'`;
         const checkRes = await client.query(checkSql, [lendRecord.from_inventory_id, lendRecord.item_id]);
         
         if (checkRes.rows.length > 0) {
              const updateInventorySql = `
                 UPDATE "INVENTORY_ITEMS"
                 SET qty = qty + $1, updated_at = NOW()
-                WHERE inventory_id = $2 AND item_id = $3;
+                WHERE inventory_id = $2 AND item_id = $3 AND status = 'Owned';
             `;
             await client.query(updateInventorySql, [lendRecord.qty, lendRecord.from_inventory_id, lendRecord.item_id]);
         } else {
              const insertInventorySql = `
                 INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
-                VALUES ($1, $2, $3, NOW(), 'Active');
+                VALUES ($1, $2, $3, NOW(), 'Owned');
             `;
             await client.query(insertInventorySql, [lendRecord.from_inventory_id, lendRecord.item_id, lendRecord.qty]);
         }
@@ -289,7 +326,7 @@ export const returnLend = async (data) => {
         // Check if sufficient
         const checkInventorySql = `
             SELECT qty FROM "INVENTORY_ITEMS"
-            WHERE inventory_id = $1 AND item_id = $2
+            WHERE inventory_id = $1 AND item_id = $2 AND status = 'Owned'
             FOR UPDATE;
         `;
         const invRes = await client.query(checkInventorySql, [lendRecord.from_inventory_id, lendRecord.item_id]);
@@ -302,7 +339,7 @@ export const returnLend = async (data) => {
         const updateInventorySql = `
             UPDATE "INVENTORY_ITEMS"
             SET qty = qty - $1, updated_at = NOW()
-            WHERE inventory_id = $2 AND item_id = $3;
+            WHERE inventory_id = $2 AND item_id = $3 AND status = 'Owned';
         `;
         await client.query(updateInventorySql, [lendRecord.qty, lendRecord.from_inventory_id, lendRecord.item_id]);
     }

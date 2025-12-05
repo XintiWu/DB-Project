@@ -10,7 +10,9 @@ router.get("/", async (req, res) => {
         return res.json(result);
     }
     if (req.query.user_id) {
+        console.log('[API] Get Inventories for User ID:', req.query.user_id);
         const result = await service.getInventoriesByUserId({ user_id: req.query.user_id });
+        console.log('[API] Inventories found:', result.length);
         return res.json(result);
     }
     const result = await service.getAllInventoryOwners();

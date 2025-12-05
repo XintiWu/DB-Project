@@ -48,7 +48,9 @@ CREATE TABLE public."INVENTORY_ITEMS" (
     item_id bigint NOT NULL,
     qty integer NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    status character varying(20)
+    status character varying(20) NOT NULL,
+    CONSTRAINT "INVENTORY_ITEMS_status_check" CHECK (((status)::text = ANY (ARRAY[('Owned'::character varying)::text, ('Lent'::character varying)::text, ('Unavailable'::character varying)::text, ('Borrowed'::character varying)::text]))),
+    CONSTRAINT "INVENTORY_ITEMS_pkey" PRIMARY KEY (inventory_id, item_id, status)
 );
 
 CREATE TABLE public."INVENTORY_OWNERS" (
@@ -95,7 +97,8 @@ CREATE TABLE public."LENDS" (
     qty integer NOT NULL,
     from_inventory_id bigint NOT NULL,
     lend_at timestamp with time zone DEFAULT now() NOT NULL,
-    returned_at timestamp with time zone
+    returned_at timestamp with time zone,
+    to_inventory_id bigint
 );
 
 CREATE TABLE public."PROVIDES" (

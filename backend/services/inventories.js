@@ -176,7 +176,7 @@ export const transferInventory = async (data) => {
     } else {
       const insertTargetSql = `
         INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
-        VALUES ($1, $2, $3, NOW(), 'Active');
+        VALUES ($1, $2, $3, NOW(), 'Available');
       `;
       await client.query(insertTargetSql, [to_inventory_id, item_id, qty]);
     }

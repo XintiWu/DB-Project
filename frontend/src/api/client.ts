@@ -109,11 +109,7 @@ export async function getRequestsByIncidentId(incidentId: string) {
   return res.json()
 }
 
-export async function getInventoryItems(inventoryId: string) {
-  const res = await fetch(`${API_BASE_URL}/inventory-items?inventory_id=${inventoryId}`)
-  if (!res.ok) throw new Error('Failed to fetch inventory items')
-  return res.json()
-}
+
 
 export function getUnverifiedRequests() {
   return request<any[]>("/requests?unverified=true");
@@ -145,14 +141,20 @@ export function warnUser(data: any) {
 }
 
 
-// --- Warehouse Management ---
+export function getInventoryById(inventoryId: string | number) {
+  return request<any>(`/inventories/${inventoryId}`);
+}
 
 export function getMyInventories(userId: string) {
   return request<any[]>(`/inventory-owners?user_id=${userId}`);
 }
 
-export function getInventoryById(inventoryId: string | number) {
-  return request<any>(`/inventories/${inventoryId}`);
+export function getInventoryItems(inventoryId: string | number, status?: string) {
+  let url = `/inventory-items/${inventoryId}`;
+  if (status) {
+      url += `?status=${status}`;
+  }
+  return request<any>(url);
 }
 
 export function createInventory(data: any) {
@@ -210,8 +212,8 @@ export function updateInventoryItem(inventoryId: string | number, itemId: string
   });
 }
 
-export function deleteInventoryItem(inventoryId: string | number, itemId: string | number) {
-  return request<any>(`/inventory-items/${inventoryId}/${itemId}`, {
+export function deleteInventoryItem(inventoryId: string | number, itemId: string | number, status: string = 'Owned') {
+  return request<any>(`/inventory-items/${inventoryId}/${itemId}?status=${status}`, {
     method: "DELETE",
   });
 }
@@ -252,4 +254,8 @@ export function rejectLend(lendId: string | number) {
   return request<any>(`/lends/${lendId}/reject`, {
     method: "PUT"
   });
+}
+
+export function getUserLends(userId: string | number) {
+  return request<any[]>(`/lends/user/${userId}`);
 }

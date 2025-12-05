@@ -4,23 +4,27 @@ import { pool } from '../db.js';
  * Add Inventory Item
  */
 export const addInventoryItem = async (data) => {
-    const { inventory_id, item_id, qty } = data;
+    const { inventory_id, item_id, qty, status = 'Owned' } = data;
   
     try {
       const sql = `
-        INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty)
-        VALUES ($1, $2, $3)
+        INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, status)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT ON CONSTRAINT "INVENTORY_ITEMS_pkey"
+        DO UPDATE SET 
+            qty = "INVENTORY_ITEMS".qty + EXCLUDED.qty,
+            updated_at = NOW()
         RETURNING *;
       `;
       
-      const values = [inventory_id, item_id, qty];
+      const values = [inventory_id, item_id, qty, status];
   
       const { rows } = await pool.query(sql, values);
       
-      return rows[0]; // Returning inserted Inventory item 
+      return rows[0]; // Returning inserted/updated Inventory item 
   
     } catch (error) {
-      console.error('Error updating inventory item:', error);
+      console.error('Error adding inventory item:', error);
       throw error;
     }
   };
@@ -35,7 +39,7 @@ export const updateInventoryItem = async (data) => {
     const sql = `
       UPDATE "INVENTORY_ITEMS"
       SET qty = $3, updated_at = $4, status = $5
-      WHERE inventory_id = $1 AND item_id = $2
+      WHERE inventory_id = $1 AND item_id = $2 AND status = $5
       RETURNING *;
     `;
     
@@ -55,16 +59,12 @@ export const updateInventoryItem = async (data) => {
 /**
  * Delete Inventory Item
  */
-export const deleteInventoryItem = async (data) => {
-  const { inventory_id, item_id } = data; 
+export const deleteInventoryItem = async (inventory_id, item_id, status = 'Owned') => { 
   
   try {
-    const sql = 'DELETE FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2 RETURNING inventory_id'; // Returning inventory_id is weird if composite key, but ok
-    // Wait, original code had `[id]` which was undefined. It should be `[inventory_id, item_id]`.
-    // And SQL only had $1 and $2.
-    // Original code: `const { rows } = await db.query(sql, [id]);` -> BUG!
+    const sql = 'DELETE FROM "INVENTORY_ITEMS" WHERE inventory_id = $1 AND item_id = $2 AND status = $3 RETURNING inventory_id';
     
-    const { rows } = await pool.query(sql, [inventory_id, item_id]);
+    const { rows } = await pool.query(sql, [inventory_id, item_id, status]);
     
     return rows[0];
 
@@ -112,21 +112,35 @@ export const deleteInventoryItem = async (data) => {
 /**
  * Get Inventory Items by Inventory ID
  */
-export const getInventoryItemsByInventoryId = async (inventory_id) => {
+export const getInventoryItemsByInventoryId = async (inventory_id, status = null) => {
   try {
-    const sql = `
+    let sql = `
       SELECT 
-        i.*,                
-        ic.category_name,   
-        inv_i.qty,          
-        inv_i.updated_at    
+        inv_i.inventory_id,
+        inv_i.item_id,
+        inv_i.qty,
+        inv_i.updated_at,
+        inv_i.status,
+        i.item_name,
+        i.unit,
+        ic.category_name
       FROM "INVENTORY_ITEMS" inv_i
       JOIN "ITEMS" i ON inv_i.item_id = i.item_id
-      JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+      LEFT JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
       WHERE inv_i.inventory_id = $1
     `;
     
-    const { rows } = await pool.query(sql, [inventory_id]);
+    const params = [inventory_id];
+    if (status) {
+        sql += ` AND inv_i.status = $2`;
+        params.push(status);
+    }
+    
+    console.log('[DEBUG] getInventoryItemsByInventoryId', { inventory_id, status, params, sql });
+    
+    const { rows } = await pool.query(sql, params);
+    
+    console.log('[DEBUG] getInventoryItemsByInventoryId result:', rows.length, 'rows');
     return rows;
   } catch (error) {
     console.error('Error getting inventory items by inventory id:', error);

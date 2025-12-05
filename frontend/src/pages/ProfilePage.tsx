@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getUserRequests, getUserIncidents, updateUser, getMyInventories, createInventory } from '../api/client'
+import { getUserRequests, getUserIncidents, updateUser, getMyInventories, createInventory, getUserLends } from '../api/client'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -8,10 +8,11 @@ import { Label } from '../components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { NeedCard } from '../components/NeedCard'
 import { parseNeed } from '../lib/utils'
-import { MapPin, Calendar, Warehouse, Plus } from 'lucide-react'
+import { MapPin, Calendar, Warehouse, Plus, ArrowRightLeft, Package } from 'lucide-react'
 import { WarehouseManagerDialog } from '../components/WarehouseManagerDialog'
 import { WarehouseCard } from '../components/WarehouseCard'
 import { DonateDialog } from '../components/DonateDialog'
+import { Badge } from '../components/ui/badge'
 
 export function ProfilePage() {
   const { user, login } = useAuth()
@@ -19,6 +20,7 @@ export function ProfilePage() {
   const [incidents, setIncidents] = useState<any[]>([])
   const [requests, setRequests] = useState<any[]>([])
   const [inventories, setInventories] = useState<any[]>([])
+  const [myLends, setMyLends] = useState<any[]>([])
   
   // Warehouse Dialog State
   const [isManagerOpen, setIsManagerOpen] = useState(false)
@@ -52,17 +54,20 @@ export function ProfilePage() {
   const fetchUserData = async () => {
     if (!user) return
     try {
-      const [incidentsData, requestsData, inventoriesData] = await Promise.all([
+      const [incidentsData, requestsData, inventoriesData, lendsData] = await Promise.all([
         getUserIncidents(user.user_id),
         getUserRequests(user.user_id),
-        getMyInventories(user.user_id)
+        getMyInventories(user.user_id),
+        getUserLends(user.user_id)
       ])
       setIncidents(incidentsData)
       setRequests(requestsData.map(parseNeed))
       setInventories(inventoriesData)
+      setMyLends(lendsData || [])
     } catch (error) {
       console.error('Error fetching user data:', error)
     } finally {
+        console.log('User data fetched', { inventories })
     }
   }
 
@@ -126,11 +131,12 @@ export function ProfilePage() {
       </div>
 
       <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
+        <TabsList className="grid w-full grid-cols-5 lg:w-[625px]">
           <TabsTrigger value="profile">個人資料</TabsTrigger>
           <TabsTrigger value="incidents">我的災情</TabsTrigger>
           <TabsTrigger value="requests">我的需求</TabsTrigger>
           <TabsTrigger value="warehouses">我的倉庫</TabsTrigger>
+          <TabsTrigger value="lends">我的借用</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -287,6 +293,66 @@ export function ProfilePage() {
                         ))
                     )}
                 </div>
+            </div>
+        </TabsContent>
+
+        {/* Lends Tab */}
+        <TabsContent value="lends" className="mt-6">
+            <div className="space-y-4">
+                {myLends.length === 0 ? (
+                     <div className="col-span-full text-center py-12 text-muted-foreground bg-slate-50 rounded-xl border border-dashed">
+                        <ArrowRightLeft className="w-12 h-12 mx-auto text-slate-300 mb-2" />
+                        <p>尚無借用紀錄</p>
+                   </div>
+                ) : (
+                    myLends.map(lend => (
+                        <div key={lend.lend_id} className="flex items-center justify-between p-4 border rounded-xl bg-white hover:shadow-sm transition-all">
+                            <div className="flex items-center gap-4">
+                                <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                    <Package className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <div className="font-bold text-slate-800 flex items-center gap-2">
+                                        {lend.item_name}
+                                        <Badge variant="outline" className="bg-slate-50">x{lend.qty}</Badge>
+                                    </div>
+                                    <div className="text-sm text-slate-500 mt-1">
+                                        申請時間: {new Date(lend.lend_at).toLocaleString()}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1 flex flex-col gap-1">
+                                        <span className="flex items-center gap-1">
+                                            <Warehouse className="w-3 h-3" />
+                                            來源倉庫 ID: {lend.from_inventory_id}
+                                        </span>
+                                        {lend.to_inventory_id ? (
+                                            <span className="flex items-center gap-1 text-blue-600">
+                                                <ArrowRightLeft className="w-3 h-3" />
+                                                存入倉庫 ID: {lend.to_inventory_id}
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-slate-400">
+                                                (未存入倉庫)
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <Badge className={`${
+                                    lend.status === 'Borrowing' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                                    lend.status === 'Pending' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                                    lend.status === 'Rejected' ? 'bg-red-100 text-red-700 hover:bg-red-100' :
+                                    'bg-slate-100 text-slate-700 hover:bg-slate-100'
+                                }`}>
+                                    {lend.status === 'Borrowing' ? '借用中' : 
+                                     lend.status === 'Pending' ? '審核中' :
+                                     lend.status === 'Rejected' ? '已拒絕' : 
+                                     lend.status === 'Returned' ? '已歸還' : lend.status}
+                                </Badge>
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
         </TabsContent>
 

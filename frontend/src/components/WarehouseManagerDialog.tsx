@@ -19,6 +19,7 @@ import {
   getWarehouseLends
 } from '../api/client'
 import { Package, Save, Trash2, Plus, ArrowRightLeft, Settings, Users } from "lucide-react"
+import { Badge } from "./ui/badge"
 
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
@@ -138,7 +139,7 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
         inventory_id: warehouse.inventory_id,
         item_id: parseInt(newItemId),
         qty: parseInt(newItemQty),
-        status: 'Active'
+        status: 'Owned'
       })
       setNewItemId('')
       setNewItemQty('')
@@ -162,7 +163,7 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
       try {
           await updateInventoryItem(warehouse.inventory_id, itemId, {
             qty: newQty,
-            status: 'Active' // Preserve status or allow generic update
+            status: 'Owned' // Preserve status or allow generic update
           })
           fetchDetails()
       } catch (error) {
@@ -306,8 +307,13 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate }:
                                     <div className="font-bold text-slate-800">{item.item_name}</div>
                                     <div className="text-xs text-muted-foreground flex items-center gap-2">
                                         <span className="font-mono">ID: {item.item_id}</span>
-                                        {/* Optional: Add Category Badge here if available */}
-                                    </div>
+                                        {item.status === 'Borrowed' ? (
+                                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Borrowed</Badge>
+                                    ) : item.status === 'Owned' ? (
+                                        <Badge variant="outline" className="bg-slate-100 text-slate-600">Owned</Badge>
+                                    ) : (
+                                        <Badge variant="outline">{item.status}</Badge>
+                                    )}</div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">

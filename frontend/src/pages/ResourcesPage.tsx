@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getAllInventories, getAllItems, getInventoryItems } from '../api/client'
+import { getAllInventories, getAllItems, getInventoryItems, getMyInventories } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import type { Inventory, Item } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
@@ -19,6 +20,9 @@ export function ResourcesPage() {
   const [inventoryItems, setInventoryItems] = useState<any[]>([])
   const [loadingItems, setLoadingItems] = useState(false)
   const [borrowItem, setBorrowItem] = useState<any>(null)
+  
+  const { user } = useAuth()
+  const [myInventoryIds, setMyInventoryIds] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     async function fetchData() {
@@ -39,6 +43,14 @@ export function ResourcesPage() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+      if (user) {
+          getMyInventories(user.user_id).then(invs => {
+              setMyInventoryIds(new Set(invs.map((i: any) => i.inventory_id)))
+          }).catch(console.error)
+      }
+  }, [user])
+
   // Lock body scroll when modal is open
   useEffect(() => {
     if (selectedInventory) {
@@ -56,7 +68,7 @@ export function ResourcesPage() {
     setLoadingItems(true)
     setInventoryItems([]) // Clear previous items to ensure clean state
     try {
-      const items = await getInventoryItems(inv.inventory_id)
+      const items = await getInventoryItems(inv.inventory_id, 'Owned')
       setInventoryItems(items)
     } catch (err) {
       console.error('Failed to fetch inventory items:', err)
@@ -233,7 +245,12 @@ export function ResourcesPage() {
                       <TabsContent value="all" className="mt-0">
                         <div className="grid gap-4">
                           {inventoryItems.map((item, idx) => (
-                            <InventoryItemCard key={idx} item={item} onBorrow={() => setBorrowItem(item)} />
+                            <InventoryItemCard 
+                                key={idx} 
+                                item={item} 
+                                onBorrow={() => setBorrowItem(item)} 
+                                isOwner={selectedInventory && myInventoryIds.has(Number(selectedInventory.inventory_id))}
+                            />
                           ))}
                         </div>
                       </TabsContent>
@@ -242,7 +259,12 @@ export function ResourcesPage() {
                         <TabsContent key={cat} value={cat} className="mt-0">
                           <div className="grid gap-4">
                             {inventoryItems.filter(i => i.category_name === cat).map((item, idx) => (
-                              <InventoryItemCard key={idx} item={item} onBorrow={() => setBorrowItem(item)} />
+                              <InventoryItemCard 
+                                key={idx} 
+                                item={item} 
+                                onBorrow={() => setBorrowItem(item)} 
+                                isOwner={selectedInventory && myInventoryIds.has(Number(selectedInventory.inventory_id))}
+                              />
                             ))}
                           </div>
                         </TabsContent>
@@ -282,7 +304,7 @@ export function ResourcesPage() {
 }
 
 
-function InventoryItemCard({ item, onBorrow }: { item: any, onBorrow?: () => void }) {
+function InventoryItemCard({ item, onBorrow, isOwner }: { item: any, onBorrow?: () => void, isOwner?: boolean }) {
   return (
     <div className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/50 bg-white/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -302,12 +324,18 @@ function InventoryItemCard({ item, onBorrow }: { item: any, onBorrow?: () => voi
         </div>
         <button 
             onClick={(e) => {
+                if (isOwner) return;
                 e.stopPropagation()
                 onBorrow?.()
             }}
-            className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-full transition-colors"
+            disabled={isOwner}
+            className={`text-xs px-3 py-1.5 rounded-full transition-colors ${
+                isOwner 
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
         >
-            借用
+            {isOwner ? '持有' : '借用'}
         </button>
       </div>
     </div>
