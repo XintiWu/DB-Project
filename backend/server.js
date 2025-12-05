@@ -7,7 +7,7 @@ import incidentsRoute from "./routes/incidents.js";
 import rescueRequestRoute from "./routes/rescue_request.js";
 import rescueSkillsRoute from "./routes/rescue_skills.js";
 import rescueEquipmentsRoute from "./routes/rescue_equipments.js";
-import requestAcceptersRoute from "./routes/request_accepters.js";
+import requestAcceptsRoute from "./routes/request_accepts.js";
 import itemsRoute from "./routes/items.js";
 import itemCategoriesRoute from "./routes/item_categories.js";
 import itemSuppliesRoute from "./routes/item_supplies.js";
@@ -42,7 +42,7 @@ app.use("/api/incidents", incidentsRoute);
 app.use("/api/rescue-request", rescueRequestRoute);
 app.use("/api/rescue-skills", rescueSkillsRoute);
 app.use("/api/rescue-equipments", rescueEquipmentsRoute);
-app.use("/api/request-accepters", requestAcceptersRoute);
+app.use("/api/request-accepts", requestAcceptsRoute);
 app.use("/api/items", itemsRoute);
 app.use("/api/item-categories", itemCategoriesRoute);
 app.use("/api/item-supplies", itemSuppliesRoute);
@@ -58,6 +58,12 @@ app.use("/api/area", areaRoute);
 app.use("/api/skill-tags", skillTagsRoute);
 app.use("/api/analytics", analyticsRoute);
 app.use("/api/warnings", warningsRoute);
+
+// 404 Logger & Handler
+app.use((req, res, next) => {
+  console.log(`[404] Resource not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Not Found' });
+});
 
 // Start
 app.listen(3000, () => {

@@ -162,6 +162,7 @@ export interface ClaimItem {
   qualifications?: string
   
   note: string
+  incidentId?: string
 }
 
 /**

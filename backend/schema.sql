@@ -127,10 +127,13 @@ CREATE TABLE public."REQUESTS" (
     CONSTRAINT urgency_check CHECK (((urgency >= 1) AND (urgency <= 5)))
 );
 
-CREATE TABLE public."REQUEST_ACCEPTERS" (
+CREATE TABLE public."REQUEST_ACCEPTS" (
     request_id bigint NOT NULL,
     accepter_id bigint NOT NULL,
-    created_at timestamp with time zone NOT NULL
+    created_at timestamp with time zone NOT NULL,
+    "ETA" time with time zone,
+    description text,
+    source text
 );
 
 CREATE TABLE public."REQUEST_EQUIPMENTS" (

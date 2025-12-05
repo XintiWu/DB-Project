@@ -22,7 +22,7 @@ export function ClaimSuccessPage() {
         <Button onClick={() => navigate('/')} variant="outline">
           返回首頁
         </Button>
-        <Button onClick={() => navigate('/volunteer')} className="bg-blue-600 hover:bg-blue-700">
+        <Button onClick={() => navigate('/requests')} className="bg-blue-600 hover:bg-blue-700">
           繼續認領
         </Button>
       </div>

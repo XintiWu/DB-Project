@@ -22,7 +22,7 @@ export function getAllRequests() {
 }
 
 export function submitClaim(data: any) {
-  return request<any>("/request-accepters/bulk", {
+  return request<any>("/request-accepts/bulk", {
     method: "POST",
     body: JSON.stringify(data),
   });
