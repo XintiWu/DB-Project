@@ -267,6 +267,7 @@ export interface Shelter {
  */
 export interface Inventory {
   inventory_id: string
+  name: string | null
   address: string
   status: string
   owner_id?: string // Optional, from join

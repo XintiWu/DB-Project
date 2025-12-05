@@ -30,6 +30,18 @@ export function IncidentsPage() {
     fetchData()
   }, [])
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedIncident) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [selectedIncident])
+
   if (loading) return <div className="text-center py-12">載入中...</div>
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
 
@@ -53,11 +65,17 @@ export function IncidentsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {incidents.map((incident) => (
           <motion.div
+            layoutId={`incident-${incident.incident_id}`}
             key={incident.incident_id}
             whileHover={{ y: -5 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            className="h-full"
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="h-full bg-white rounded-xl"
           >
+            <motion.div
+              animate={{ opacity: selectedIncident?.incident_id === incident.incident_id ? 0 : 1 }}
+              transition={{ duration: 0.05 }}
+              className="h-full"
+            >
             <Card
               className="hover:shadow-lg transition-all cursor-pointer hover:border-blue-300 h-full"
               onClick={() => setSelectedIncident(incident)}
@@ -94,6 +112,7 @@ export function IncidentsPage() {
                 </div>
               </CardContent>
             </Card>
+            </motion.div>
           </motion.div>
         ))}
       </div>

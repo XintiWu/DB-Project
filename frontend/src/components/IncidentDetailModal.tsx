@@ -52,31 +52,21 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
   }
 
   return (
-    <motion.div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
-    >
+    <div className="fixed top-0 left-0 h-screen w-screen z-[9999] flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop with blur */}
       <motion.div 
-        className="absolute inset-0 bg-black/30" 
+        className="absolute inset-0 bg-black/20 backdrop-blur-sm z-0" 
         onClick={onClose}
-        initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
-        animate={{ opacity: 1, backdropFilter: 'blur(12px)' }}
-        exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
       />
 
       {/* Modal Content */}
       <motion.div 
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl flex flex-col"
-        style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
-          border: '1px solid rgba(255, 255, 255, 0.18)'
-        }}
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        layoutId={`incident-${incident.incident_id}`}
+        className="relative z-50 w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl flex flex-col bg-white/85 backdrop-blur-xl shadow-2xl border border-white/20"
         transition={{ duration: 0.3, type: "spring", damping: 25, stiffness: 300 }}
       >
         
@@ -245,6 +235,6 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
           </section>
         </div>
       </motion.div>
-    </motion.div>
+    </div>
   )
 }

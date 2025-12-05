@@ -48,6 +48,12 @@ export function FinancialsPage() {
     value: parseInt(m.total_amount)
   })).reverse() || []
 
+  const formatYAxis = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`
+    return value.toString()
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -145,10 +151,13 @@ export function FinancialsPage() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthData}>
+              <BarChart data={monthData} margin={{ left: 10, right: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis />
+                <YAxis 
+                  tickFormatter={formatYAxis}
+                  width={60}
+                />
                 <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
                 <Bar dataKey="value" fill="#10b981" name="金額" />
               </BarChart>

@@ -30,6 +30,18 @@ export function RequestsPage() {
       window.history.replaceState({}, document.title)
     }
   }, [location.state, setFilters])
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedNeed) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [selectedNeed])
   
   // Filter logic
   const filteredNeeds = needs.filter(need => {
@@ -132,6 +144,8 @@ export function RequestsPage() {
             key={need.id} 
             need={need} 
             onClick={() => setSelectedNeed(need)} 
+            layoutId={`need-${need.id}`}
+            isSelected={selectedNeed?.id === need.id}
           />
         ))}
       </div>
