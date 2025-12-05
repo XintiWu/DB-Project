@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:init": "node init_db.js"
+    "db:init": "node init_db.js",
+    "db:optimize": "node apply_optimization.js",
+    "db:check": "node check_optimization.js",
+    "db:rollback": "node rollback_optimization.js"
   },
   "keywords": [],
   "author": "",
