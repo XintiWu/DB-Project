@@ -75,7 +75,8 @@ export const getInventoriesByUserId = async (data) => {
 
   try {
     const sql = `
-      SELECT io.*, i.address, i.name, i.updated_at
+      SELECT io.*, i.address, i.name, i.updated_at,
+      (SELECT COUNT(*) FROM "INVENTORY_ITEMS" ii WHERE ii.inventory_id = i.inventory_id)::int as item_count
       FROM "INVENTORY_OWNERS" io
       JOIN "INVENTORIES" i ON io.inventory_id = i.inventory_id
       WHERE io.user_id = $1

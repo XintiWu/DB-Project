@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { NeedCard } from '../components/NeedCard'
 import { parseNeed } from '../lib/utils'
 import { MapPin, Calendar, Warehouse, Plus, ArrowRightLeft, Package } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { WarehouseManagerDialog } from '../components/WarehouseManagerDialog'
 import { WarehouseCard } from '../components/WarehouseCard'
 import { DonateDialog } from '../components/DonateDialog'
@@ -285,6 +286,7 @@ export function ProfilePage() {
                                 key={inv.inventory_id} 
                                 warehouse={inv} 
                                 onClick={openManager}
+                                layoutId={`warehouse-${inv.inventory_id}`}
                                 onDonate={() => {
                                     setSelectedWarehouse(inv)
                                     setIsDonateOpen(true)
@@ -359,12 +361,17 @@ export function ProfilePage() {
       </Tabs>
       
       {/* Dialogs */}
-      <WarehouseManagerDialog 
-        isOpen={isManagerOpen} 
-        onClose={() => setIsManagerOpen(false)} 
-        warehouse={selectedWarehouse}
-        onUpdate={fetchUserData}
-      />
+      <AnimatePresence>
+        {isManagerOpen && selectedWarehouse && (
+          <WarehouseManagerDialog 
+            isOpen={isManagerOpen} 
+            onClose={() => setIsManagerOpen(false)} 
+            warehouse={selectedWarehouse}
+            onUpdate={fetchUserData}
+            layoutId={`warehouse-${selectedWarehouse.inventory_id}`}
+          />
+        )}
+      </AnimatePresence>
 
       <DonateDialog 
           isOpen={isDonateOpen}

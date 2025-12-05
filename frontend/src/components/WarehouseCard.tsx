@@ -7,11 +7,10 @@ import { motion } from 'framer-motion'
 interface WarehouseCardProps {
   warehouse: any
   onClick: (warehouse: any) => void
-  onDonate?: (warehouse: any) => void
   layoutId?: string
 }
 
-export function WarehouseCard({ warehouse, onClick, onDonate, layoutId }: WarehouseCardProps) {
+export function WarehouseCard({ warehouse, onClick, layoutId }: Omit<WarehouseCardProps, 'onDonate'>) {
   const isInactive = warehouse.status === 'Inactive'
 
   return (
@@ -54,7 +53,7 @@ export function WarehouseCard({ warehouse, onClick, onDonate, layoutId }: Wareho
                     <Package className="w-4 h-4" />
                     <span>庫存物品</span>
                 </div>
-                <span className="font-medium">-- 項目</span>
+                <span className="font-medium">{warehouse.item_count || 0} 項目</span>
             </div>
              <div className="flex justify-between items-center text-slate-600">
                 <div className="flex items-center gap-2">
@@ -70,16 +69,7 @@ export function WarehouseCard({ warehouse, onClick, onDonate, layoutId }: Wareho
           </div>
         </CardContent>
 
-        <CardFooter className="p-4 pt-0 grid grid-cols-2 gap-2">
-          <Button 
-            className="w-full bg-slate-900 text-white hover:bg-slate-800"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onDonate) onDonate(warehouse);
-            }}
-          >
-             提供物資
-          </Button>
+        <CardFooter className="p-4 pt-0">
           <Button 
             variant="outline"
             className="w-full border-blue-200 text-blue-600 hover:bg-blue-50"

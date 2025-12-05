@@ -83,7 +83,7 @@ export function TransferDialog({ isOpen, onClose, onSuccess, sourceInventoryId, 
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md bg-white">
+      <DialogContent className="max-w-md bg-white z-[99999]">
         <DialogHeader>
           <DialogTitle>轉移物資: {item.item_name}</DialogTitle>
           <DialogDescription>
