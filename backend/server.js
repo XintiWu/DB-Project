@@ -24,10 +24,14 @@ import skillTagsRoute from "./routes/skill_tags.js";
 import analyticsRoute from "./routes/analytics.js";
 import authRoute from "./routes/auth.js";
 import warningsRoute from "./routes/warnings.js";
+import { connectMongoDB } from "./mongodb.js";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 初始化 MongoDB 連接
+connectMongoDB().catch(console.error);
 
 // Root
 app.get("/", (req, res) => {
