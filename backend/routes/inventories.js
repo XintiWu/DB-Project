@@ -5,7 +5,9 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const result = await service.getAllInventories();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const result = await service.getAllInventories({ page, limit });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

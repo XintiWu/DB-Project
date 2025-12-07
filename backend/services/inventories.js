@@ -176,7 +176,7 @@ export const transferInventory = async (data) => {
     } else {
       const insertTargetSql = `
         INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
-        VALUES ($1, $2, $3, NOW(), 'Available');
+        VALUES ($1, $2, $3, NOW(), 'Owned');
       `;
       await client.query(insertTargetSql, [to_inventory_id, item_id, qty]);
     }
@@ -197,11 +197,45 @@ export const transferInventory = async (data) => {
 /**
  * Get All Inventories
  */
-export const getAllInventories = async () => {
+export const getAllInventories = async (pagination = {}) => {
+  const { page = 1, limit = 10 } = pagination;
+  const offset = (page - 1) * limit;
+
   try {
-    const sql = 'SELECT * FROM "INVENTORIES" WHERE status = \'Public\' ORDER BY inventory_id ASC';
-    const { rows } = await pool.query(sql);
-    return rows;
+    // 1. Get total count
+    const countSql = 'SELECT COUNT(*) FROM "INVENTORIES" WHERE status = \'Public\'';
+    const countResult = await pool.query(countSql);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get paginated data
+    // debug log
+    console.log(`Fetching inventories page ${page}, limit ${limit}`);
+    
+    const sql = `
+      SELECT i.*, CAST(COALESCE(SUM(ii.qty), 0) AS INTEGER) as total_qty
+      FROM "INVENTORIES" i
+      LEFT JOIN "INVENTORY_ITEMS" ii ON i.inventory_id = ii.inventory_id AND ii.status = 'Owned'
+      WHERE i.status = 'Public'
+      GROUP BY i.inventory_id
+      ORDER BY total_qty DESC, i.inventory_id ASC
+      LIMIT $1 OFFSET $2
+    `;
+    const { rows } = await pool.query(sql, [limit, offset]);
+    if (rows.length > 0) {
+        console.log('First inventory total_qty:', rows[0].total_qty);
+        console.log('Last inventory total_qty:', rows[rows.length-1].total_qty);
+    }
+    
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
   } catch (error) {
     console.error('Error getting all inventories:', error);
     throw error;

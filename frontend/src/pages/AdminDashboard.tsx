@@ -19,6 +19,11 @@ export function AdminDashboard() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalPendingCount, setTotalPendingCount] = useState(0)
 
   // Warning Dialog State
   const [warningOpen, setWarningOpen] = useState(false)
@@ -28,12 +33,22 @@ export function AdminDashboard() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [analyticsData, requestsData] = await Promise.all([
+        const [analyticsData, requestsResponse] = await Promise.all([
           getAnalytics(),
-          getUnverifiedRequests()
+          getUnverifiedRequests({ page, limit: 10 })
         ])
         setData(analyticsData)
-        setPendingRequests(requestsData)
+        
+        let reqData: any[] = []
+        if ((requestsResponse as any).data) {
+            reqData = (requestsResponse as any).data
+            setTotalPages((requestsResponse as any).meta.totalPages)
+            setTotalPendingCount((requestsResponse as any).meta.totalItems)
+        } else if (Array.isArray(requestsResponse)) {
+            reqData = requestsResponse
+            setTotalPendingCount(requestsResponse.length)
+        }
+        setPendingRequests(reqData)
       } catch (err) {
         console.error('Failed to fetch admin data:', err)
         setError('無法載入管理資料')
@@ -42,7 +57,7 @@ export function AdminDashboard() {
       }
     }
     fetchData()
-  }, [])
+  }, [page])
 
   const handleReview = async (requestId: string, status: 'Approved' | 'Rejected') => {
     if (!user) return
@@ -112,9 +127,9 @@ export function AdminDashboard() {
           <TabsTrigger value="overview">總覽分析</TabsTrigger>
           <TabsTrigger value="reviews">
             待審核需求
-            {pendingRequests.length > 0 && (
+            {totalPendingCount > 0 && (
               <span className="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
-                {pendingRequests.length}
+                {totalPendingCount}
               </span>
             )}
           </TabsTrigger>
@@ -353,6 +368,29 @@ export function AdminDashboard() {
               )}
             </AnimatePresence>
           </div>
+          
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-8">
+                <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                上一頁
+                </button>
+                <span className="text-sm font-medium text-slate-600">
+                    第 {page} 頁 / 共 {totalPages} 頁
+                </span>
+                <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                下一頁
+                </button>
+            </div>
+            )}
         </TabsContent>
       </Tabs>
 

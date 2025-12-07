@@ -273,12 +273,28 @@ export const getRequestsByIncidentId = async (data) => {
 /**
  * Get all pending requests
  */
-export const getAllUnverifiedRequests = async () => {
+export const getAllUnverifiedRequests = async (params = {}) => {
+  const { page = 1, limit = 10 } = params;
+  const offset = (page - 1) * limit;
+
   try {
-    const sql = `${BASE_QUERY} WHERE r.review_status IS NULL OR r.review_status = 'Unverified' ORDER BY r.created_at ASC`;
-    const { rows } = await pool.query(sql);
+    const countSql = `SELECT COUNT(*) FROM "REQUESTS" r WHERE r.review_status IS NULL OR r.review_status = 'Unverified'`;
+    const countResult = await pool.query(countSql);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const sql = `${BASE_QUERY} WHERE r.review_status IS NULL OR r.review_status = 'Unverified' ORDER BY r.created_at ASC LIMIT $1 OFFSET $2`;
+    const { rows } = await pool.query(sql, [limit, offset]);
     
-    return rows;
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
 
   } catch (error) {
     console.error('Error getting unverified requests:', error);
@@ -289,13 +305,67 @@ export const getAllUnverifiedRequests = async () => {
 /**
  * Get ALL requests
  */
-export const getAllRequests = async () => {
-    try {
-      const sql = `${BASE_QUERY} ORDER BY r.created_at DESC`;
-      const { rows } = await pool.query(sql);
-      return rows;
-    } catch (error) {
-      console.error('Error getting all requests:', error);
-      throw error;
+export const getAllRequests = async (params = {}) => {
+  const { page = 1, limit = 10, type, keyword, incident_id } = params;
+  const offset = (page - 1) * limit;
+
+  try {
+    let whereClauses = [];
+    let values = [];
+    let valIdx = 1;
+
+    // Filter by Type
+    if (type && type !== 'all') {
+      if (type === 'material') {
+        whereClauses.push(`(r.type = 'Material' OR r.type = 'item' OR r.type = 'material')`);
+      } else if (type === 'tool') {
+        whereClauses.push(`(r.type = 'Tool' OR r.type = 'tool')`);
+      } else if (type === 'manpower') {
+         whereClauses.push(`(r.type = 'Humanpower' OR r.type = 'rescue' OR r.type = 'manpower')`);
+      } else {
+         whereClauses.push(`r.type = $${valIdx}`);
+         values.push(type);
+         valIdx++;
+      }
     }
-  };
+
+    // Filter by Keyword (title)
+    if (keyword) {
+      whereClauses.push(`(r.title ILIKE $${valIdx})`);
+      values.push(`%${keyword}%`);
+      valIdx++;
+    }
+
+    // Filter by Incident ID
+    if (incident_id) {
+      whereClauses.push(`r.incident_id = $${valIdx}`);
+      values.push(incident_id);
+      valIdx++;
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    // 1. Get total count
+    const countSql = `SELECT COUNT(*) FROM "REQUESTS" r ${whereSql}`;
+    const countResult = await pool.query(countSql, values);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get paginated data
+    const sql = `${BASE_QUERY} ${whereSql} ORDER BY r.created_at DESC LIMIT $${valIdx} OFFSET $${valIdx + 1}`;
+    const { rows } = await pool.query(sql, [...values, limit, offset]);
+
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
+  } catch (error) {
+    console.error('Error getting all requests:', error);
+    throw error;
+  }
+};

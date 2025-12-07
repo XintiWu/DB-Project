@@ -5,7 +5,7 @@ import type { Incident } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Button } from '../components/ui/button'
-import { MapPin, AlertTriangle } from 'lucide-react'
+import { MapPin, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { IncidentDetailModal } from '../components/IncidentDetailModal'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -14,11 +14,23 @@ export function IncidentsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null)
+  
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true)
       try {
-        const data = await getAllIncidents()
+        const response: any = await getAllIncidents({ page, limit: 12 })
+        let data = []
+        if (response.data) {
+            data = response.data
+            setTotalPages(response.meta.totalPages)
+        } else if (Array.isArray(response)) {
+            data = response
+        }
         setIncidents(data)
       } catch (err) {
         console.error('Failed to fetch incidents:', err)
@@ -28,7 +40,7 @@ export function IncidentsPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [page])
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -62,7 +74,7 @@ export function IncidentsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {incidents.map((incident) => (
           <motion.div
             layoutId={`incident-${incident.incident_id}`}
@@ -91,9 +103,17 @@ export function IncidentsPage() {
                       {incident.title}
                     </CardTitle>
                   </div>
-                  <Badge variant={incident.status === 'Resolved' ? 'secondary' : 'destructive'}>
-                    {incident.status}
-                  </Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant={incident.status === 'Resolved' ? 'secondary' : 'destructive'}>
+                      {incident.status}
+                    </Badge>
+                     {incident.status === 'Verified' && (
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 gap-1 pl-1 pr-2">
+                           <ShieldCheck className="h-3 w-3" />
+                           已查證
+                        </Badge>
+                     )}
+                   </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -115,6 +135,27 @@ export function IncidentsPage() {
             </motion.div>
           </motion.div>
         ))}
+      </div>
+      
+      {/* Pagination Controls */}
+      <div className="flex justify-center items-center gap-4 mt-8">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          上一頁
+        </button>
+        <span className="text-sm font-medium text-slate-600">
+            第 {page} 頁 / 共 {totalPages} 頁
+        </span>
+        <button
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          下一頁
+        </button>
       </div>
 
       <AnimatePresence>

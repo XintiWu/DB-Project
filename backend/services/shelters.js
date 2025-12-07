@@ -120,12 +120,41 @@ export const searchSheltersByAreaId = async (data) => {
 /**
  * Get All Shelters
  */
-export const getAllShelters = async () => {
+export const getAllShelters = async (params = {}) => {
+  const { page = 1, limit = 10, keyword } = params;
+  const offset = (page - 1) * limit;
+
   try {
-    const sql = 'SELECT * FROM "SHELTERS"';
-    const { rows } = await pool.query(sql);
+    let whereClause = '';
+    let values = [];
+    if (keyword) {
+      whereClause = 'WHERE (name ILIKE $1 OR address ILIKE $1)';
+      values.push(`%${keyword}%`);
+    }
+
+    // 1. Get Count
+    const countSql = `SELECT COUNT(*) FROM "SHELTERS" ${whereClause}`;
+    const countResult = await pool.query(countSql, values);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get Data
+    // Adjust indices for LIMIT/OFFSET
+    const limitIdx = values.length + 1;
+    const offsetIdx = values.length + 2;
+    const sql = `SELECT * FROM "SHELTERS" ${whereClause} ORDER BY shelter_id ASC LIMIT $${limitIdx} OFFSET $${offsetIdx}`;
     
-    return rows;
+    const { rows } = await pool.query(sql, [...values, limit, offset]);
+    
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
 
   } catch (error) {
     console.error('Error getting all shelters:', error);

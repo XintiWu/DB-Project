@@ -314,3 +314,25 @@ export const getTopFeatures = async (limit = 20) => {
     throw error;
   }
 };
+/**
+ * 記錄搜尋日誌
+ */
+export const logSearch = async (searchData) => {
+  try {
+    const db = await getMongoDB();
+    const searchLogsCollection = db.collection('search_logs');
+    
+    const logEntry = {
+      ...searchData,
+      timestamp: new Date(),
+      date: new Date().toISOString().split('T')[0],
+      hour: new Date().getHours(),
+    };
+    
+    const result = await searchLogsCollection.insertOne(logEntry);
+    return result.insertedId;
+  } catch (error) {
+    console.error('Error logging search:', error);
+    throw error;
+  }
+};
