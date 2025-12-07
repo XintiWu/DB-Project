@@ -1,5 +1,64 @@
-// 點擊追蹤和分析服務
 import { getMongoDB } from '../mongodb.js';
+import { pool } from '../db.js';
+
+export const getSystemStats = async () => {
+    try {
+        const queries = {
+            totalRequests: 'SELECT COUNT(*) FROM "REQUESTS"',
+            pendingRequests: 'SELECT COUNT(*) FROM "REQUESTS" WHERE status != \'Completed\'',
+            completedRequests: 'SELECT COUNT(*) FROM "REQUESTS" WHERE status = \'Completed\'',
+            totalIncidents: 'SELECT COUNT(*) FROM "INCIDENTS"',
+            totalUsers: 'SELECT COUNT(*) FROM "USERS"',
+            byType: 'SELECT type, COUNT(*) as count FROM "REQUESTS" GROUP BY type',
+            byUrgency: 'SELECT urgency, COUNT(*) as count FROM "REQUESTS" GROUP BY urgency',
+            topItems: `
+                SELECT i.item_name, SUM(rm.qty) as total_qty
+                FROM "REQUEST_MATERIALS" rm
+                JOIN "ITEMS" i ON rm.item_id = i.item_id
+                GROUP BY i.item_name
+                ORDER BY total_qty DESC
+                LIMIT 5
+            `
+        };
+
+        const [
+            totalRequestsRes,
+            pendingRequestsRes,
+            completedRequestsRes,
+            totalIncidentsRes,
+            totalUsersRes,
+            byTypeRes,
+            byUrgencyRes,
+            topItemsRes
+        ] = await Promise.all([
+            pool.query(queries.totalRequests),
+            pool.query(queries.pendingRequests),
+            pool.query(queries.completedRequests),
+            pool.query(queries.totalIncidents),
+            pool.query(queries.totalUsers),
+            pool.query(queries.byType),
+            pool.query(queries.byUrgency),
+            pool.query(queries.topItems)
+        ]);
+
+        return {
+            system: {
+                totalRequests: parseInt(totalRequestsRes.rows[0].count),
+                pendingRequests: parseInt(pendingRequestsRes.rows[0].count),
+                completedRequests: parseInt(completedRequestsRes.rows[0].count),
+                totalIncidents: parseInt(totalIncidentsRes.rows[0].count),
+                totalUsers: parseInt(totalUsersRes.rows[0].count)
+            },
+            byType: byTypeRes.rows,
+            byUrgency: byUrgencyRes.rows,
+            topItems: topItemsRes.rows
+        };
+
+    } catch (error) {
+        console.error('Error getting system stats:', error);
+        throw error;
+    }
+};
 
 /**
  * 記錄點擊事件

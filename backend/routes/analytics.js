@@ -24,6 +24,16 @@ router.post('/clicks', async (req, res) => {
   }
 });
 
+// 獲取系統統計
+router.get('/stats', async (req, res) => {
+    try {
+        const stats = await analyticsService.getSystemStats();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 獲取頁面統計
 router.get('/pages', async (req, res) => {
   try {
