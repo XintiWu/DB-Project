@@ -30,6 +30,8 @@ export function getAllRequests(options: { page?: number; limit?: number; type?: 
   return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
+// Update signature to be more specific if possible, but 'any' allows flexibility.
+// Ideally: submitClaim(data: { accepter_id: number, items: { request_id: number, qty: number, ... }[] })
 export function submitClaim(data: any) {
   return request<any>("/request-accepts/bulk", {
     method: "POST",
@@ -78,8 +80,16 @@ export function getAllInventories(options: { page?: number; limit?: number } = {
   return request<{ data: any[]; meta: any } | any[]>(`/inventories${query}`);
 }
 
-export function getAllFinancials() {
-  return request<any[]>("/financials");
+export function getAllFinancials(options: { page?: number; limit?: number; sortBy?: string; sortOrder?: string } = {}) {
+  const { page, limit, sortBy, sortOrder } = options;
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (sortBy) params.append('sortBy', sortBy);
+  if (sortOrder) params.append('sortOrder', sortOrder);
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<{ data: any[]; meta: any } | any[]>(`/financials${query}`);
 }
 
 export function getFinancialStats() {
@@ -167,6 +177,26 @@ export function reviewIncident(incidentId: string, data: any) {
 
 export function getSearchAnalytics() {
   return request<any>("/analytics/search");
+}
+
+export function getIncidentStatsByArea() {
+    return request<any[]>("/analytics/incident-stats");
+}
+
+export function getTopNeededCategories() {
+    return request<any[]>("/analytics/top-needed-categories");
+}
+
+export function getIdleResources(days: number = 30) {
+    return request<any[]>(`/analytics/idle-resources?days=${days}`);
+}
+
+export function getSearchKeywordsAnalysis() {
+    return request<any[]>("/analytics/search-keywords-analysis");
+}
+
+export function getVolunteerLeaderboard(limit: number = 10) {
+    return request<any[]>(`/analytics/volunteer-leaderboard?limit=${limit}`);
 }
 
 export function logSearch(data: any) {

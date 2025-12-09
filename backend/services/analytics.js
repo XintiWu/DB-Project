@@ -61,6 +61,93 @@ export const getSystemStats = async () => {
 };
 
 /**
+ * Report Function B-1: 統計各地區災情數量
+ */
+export const getIncidentStatsByArea = async () => {
+    try {
+        const sql = `
+            SELECT a.area_name, COUNT(i.incident_id) as incident_count
+            FROM "INCIDENTS" i
+            JOIN "AREA" a ON i.area_id = a.area_id
+            GROUP BY a.area_name
+            ORDER BY incident_count DESC;
+        `;
+        const { rows } = await pool.query(sql);
+        return rows;
+    } catch (error) {
+        console.error('Error getting incident stats by area:', error);
+        throw error;
+    }
+};
+
+/**
+ * Report Function B-2: 分析最急需的物資類別 (Optimized JOIN)
+ */
+export const getTopNeededCategories = async () => {
+    try {
+        const sql = `
+            SELECT c.category_name, SUM(r.required_qty - r.current_qty) as shortage
+            FROM "REQUESTS" r
+            JOIN "REQUEST_MATERIALS" rm ON r.request_id = rm.request_id
+            JOIN "ITEMS" i ON rm.item_id = i.item_id
+            JOIN "ITEM_CATEGORIES" c ON i.category_id = c.category_id
+            WHERE r.status = 'Not Completed'
+            GROUP BY c.category_name
+            ORDER BY shortage DESC;
+        `;
+        const { rows } = await pool.query(sql);
+        return rows;
+    } catch (error) {
+        console.error('Error getting top needed categories:', error);
+        throw error;
+    }
+};
+
+/**
+ * Report Function B-3: 找出閒置的高價值庫存
+ */
+export const getIdleResources = async (days = 30) => {
+    try {
+        const sql = `
+            SELECT i.item_name, ii.qty, ii.updated_at, inv.name as inventory_name
+            FROM "INVENTORY_ITEMS" ii
+            JOIN "ITEMS" i ON ii.item_id = i.item_id
+            JOIN "INVENTORIES" inv ON ii.inventory_id = inv.inventory_id
+            WHERE ii.qty > 100 
+            AND ii.updated_at < NOW() - ($1 || ' days')::INTERVAL
+            ORDER BY ii.qty DESC;
+        `;
+        const { rows } = await pool.query(sql, [days]);
+        return rows;
+    } catch (error) {
+        console.error('Error getting idle resources:', error);
+        throw error;
+    }
+};
+
+/**
+ * Report Function B-5: 志工貢獻度排行
+ */
+export const getVolunteerLeaderboard = async (limit = 10) => {
+    try {
+        const sql = `
+            SELECT u.name, COUNT(ra.request_id) as help_count
+            FROM "REQUEST_ACCEPTS" ra
+            JOIN "USERS" u ON ra.accepter_id = u.user_id
+            GROUP BY u.name
+            ORDER BY help_count DESC
+            LIMIT $1;
+        `;
+        const { rows } = await pool.query(sql, [limit]);
+        return rows;
+    } catch (error) {
+        console.error('Error getting volunteer leaderboard:', error);
+        throw error;
+    }
+};
+
+
+/**
  * 記錄點擊事件
  */
 export const trackClick = async (clickData) => {
@@ -317,6 +404,31 @@ export const getTopFeatures = async (limit = 20) => {
 /**
  * 記錄搜尋日誌
  */
+
+/**
+ * Report Function B-4: NoSQL 分析 - 熱門搜尋關鍵字
+ */
+ export const getSearchKeywordsAnalysis = async () => {
+  try {
+    const db = await getMongoDB();
+    const collection = db.collection('search_logs');
+    
+    // Aggregation Pipeline from Report
+    const pipeline = [
+        { $group: { _id: "$keyword", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+    ];
+    
+    const results = await collection.aggregate(pipeline).toArray();
+    return results; // Returns [{ _id: 'tent', count: 50 }, ...]
+  } catch (error) {
+    console.error('Error getting search keyword analysis:', error);
+    // Fallback if MongoDB is not connected or error
+    return [];
+  }
+};
+
 export const logSearch = async (searchData) => {
   try {
     const db = await getMongoDB();

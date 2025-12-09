@@ -84,21 +84,60 @@ export const deleteIncident = async (id) => {
 };
 
 /**
- * Search Incidents by Area ID
+ * Search Incidents by Area ID and Status (Report Function A-1)
  */
 export const searchIncidentsByAreaId = async (data) => {
-  const { area_id } = data;
+  const { area_id, status } = data;
 
   try {
-    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE area_id = $1';
-    const { rows } = await pool.query(sql, [area_id]);
+    let sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE area_id = $1';
+    const params = [area_id];
+    
+    if (status) {
+      sql += ' AND status = $2';
+      params.push(status);
+    }
+
+    sql += ' ORDER BY reported_at DESC';
+
+    const { rows } = await pool.query(sql, params);
     
     return rows; //Incident list
 
-  } catch (error) {
+  } 
+  catch (error) {
     console.error('Error searching incidents by area:', error);
     throw error;
   }
+};
+
+/**
+ * Filter Incidents (General Purpose Filter)
+ */
+export const filterIncidents = async (filters) => {
+    const { area_id, status } = filters;
+    try {
+        let sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE 1=1';
+        const params = [];
+        let pIdx = 1;
+
+        if (area_id) {
+            sql += ` AND area_id = $${pIdx++}`;
+            params.push(area_id);
+        }
+        if (status) {
+            sql += ` AND status = $${pIdx++}`;
+            params.push(status);
+        }
+
+        sql += ' ORDER BY reported_at DESC';
+        
+        const { rows } = await pool.query(sql, params);
+        return rows;
+    } catch (error) {
+        console.error('Error filtering incidents:', error);
+        throw error;
+    }
 };
 
 /**

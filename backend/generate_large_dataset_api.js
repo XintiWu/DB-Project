@@ -129,7 +129,8 @@ async function generateLargeDataset() {
         const result = await apiRequest('/inventories', 'POST', {
           address,
           owner_id: ownerId,
-          name: `倉庫 #${i + 1}`
+          name: `倉庫 #${i + 1}`,
+          status // Add this line
         });
         
         generatedInventoryIds.push(result.inventory_id);
@@ -192,18 +193,36 @@ async function generateLargeDataset() {
         };
         
         if (type === 'Material') {
-          title = getRandomElement(TITLES_MATERIAL);
-          const itemId = getRandomElement(itemIds);
+          // Filter items that are NOT tools (Materials/Supplies)
+          // Note: items[] contains is_tool boolean (true/false) based on getAllItems service
+          const materialItems = items.filter(i => !i.is_tool);
+          // If no specific materials found, fallback to all items or handle error. 
+          // Assuming data exists.
+          const targetItem = materialItems.length > 0 ? getRandomElement(materialItems) : getRandomElement(items);
+          
+          title = `急需 ${targetItem.item_name}`;
+          const itemId = targetItem.item_id;
+          
           requestData.title = title;
           requestData.items = [{ item_id: itemId, qty: requiredQty }];
+
         } else if (type === 'Tool') {
-          title = getRandomElement(TITLES_TOOL);
-          const itemId = getRandomElement(itemIds);
+          // Filter items that ARE tools
+          const toolItems = items.filter(i => i.is_tool);
+          const targetItem = toolItems.length > 0 ? getRandomElement(toolItems) : getRandomElement(items);
+          
+          title = `需要 ${targetItem.item_name}`;
+          const itemId = targetItem.item_id;
+          
           requestData.title = title;
           requestData.equipments = [{ required_equipment: itemId, qty: requiredQty }];
+
         } else if (type === 'Humanpower') {
-          title = getRandomElement(TITLES_HUMANPOWER);
-          const skillId = getRandomElement(skillIds);
+          const targetSkill = getRandomElement(skills);
+          
+          title = `急需 ${targetSkill.skill_tag_name} 支援`;
+          const skillId = targetSkill.skill_tag_id;
+          
           requestData.title = title;
           requestData.skills = [{ skill_tag_id: skillId, qty: requiredQty }];
         }

@@ -18,7 +18,13 @@ router.get("/", async (req, res) => {
         const result = await service.getTransactionsByAdminId({ admin_id: req.query.admin_id });
         return res.json(result);
     }
-    const result = await service.getAllTransactions();
+    
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const sortBy = req.query.sortBy || 'created_at';
+    const sortOrder = req.query.sortOrder || 'DESC';
+    
+    const result = await service.getAllTransactions({ page, limit, sortBy, sortOrder });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

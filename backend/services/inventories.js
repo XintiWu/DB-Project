@@ -22,10 +22,11 @@ export const createInventory = async (data) => {
     // 1. CREATE INVENTORY
     const insertInventorySql = `
       INSERT INTO "INVENTORIES" (address, name, status)
-      VALUES ($1, $2, 'Private')
+      VALUES ($1, $2, $3)
       RETURNING inventory_id;
     `;
-    const inventoryResult = await client.query(insertInventorySql, [address, data.name || 'New Warehouse']); //DB assigns new inventory id
+    const finalStatus = data.status || 'Private';
+    const inventoryResult = await client.query(insertInventorySql, [address, data.name || 'New Warehouse', finalStatus]); //DB assigns new inventory id
     const newInventory = inventoryResult.rows[0];
     const newInventoryId = newInventory.inventory_id;
 

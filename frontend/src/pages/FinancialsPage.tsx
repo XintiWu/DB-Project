@@ -12,15 +12,31 @@ export function FinancialsPage() {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Pagination State
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  
+  // Sorting State
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('DESC')
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [txnsData, statsData] = await Promise.all([
-          getAllFinancials(),
+        setLoading(true)
+        const [txnsResponse, statsData] = await Promise.all([
+          getAllFinancials({ page, limit: 20, sortBy, sortOrder }),
           getFinancialStats()
         ])
-        setTransactions(txnsData)
+        
+        if ((txnsResponse as any).data) {
+            setTransactions((txnsResponse as any).data)
+            setTotalPages((txnsResponse as any).meta.totalPages)
+        } else {
+             setTransactions(txnsResponse as any)
+        }
+        
         setStats(statsData)
       } catch (err) {
         console.error('Failed to fetch financials:', err)
@@ -30,12 +46,12 @@ export function FinancialsPage() {
       }
     }
     fetchData()
-  }, [])
+  }, [page, sortBy, sortOrder]) // Refetch on change
 
-  if (loading) return <div className="text-center py-12">載入中...</div>
+  if (loading && transactions.length === 0) return <div className="text-center py-12">載入中...</div>
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
 
-  const totalAmount = transactions.reduce((sum, t) => sum + Number(t.amount), 0)
+  const totalAmount = stats?.summary?.total_amount || 0; // Use Optimized Stats Total
 
   // Prepare chart data
   const purposeData = stats?.byPurpose?.map((p: any) => ({
@@ -69,12 +85,12 @@ export function FinancialsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-green-800 flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              總交易金額
+              年度交易金額
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-700">
-              ${totalAmount.toLocaleString()}
+              ${parseFloat(totalAmount).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -83,7 +99,7 @@ export function FinancialsPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
-              總交易筆數
+              年度交易筆數
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -168,9 +184,11 @@ export function FinancialsPage() {
 
       {/* Transactions Table */}
       <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
-        <div className="p-4 border-b bg-slate-50 font-medium">
-          近期交易紀錄
+        <div className="p-4 border-b bg-slate-50 font-medium flex justify-between items-center">
+          <span>近期交易紀錄 (第 {page} 頁)</span>
+          <span className="text-xs text-slate-500">顯示 20 筆 / 頁</span>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-50 border-b">
             <tr>
@@ -182,26 +200,74 @@ export function FinancialsPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {transactions.map((txn) => (
-              <tr key={txn.txn_id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-slate-400" />
-                  {txn.source}
-                </td>
-                <td className="px-4 py-3">{txn.purpose}</td>
-                <td className="px-4 py-3 font-mono font-medium text-emerald-600">
-                  {txn.currency} {Number(txn.amount).toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-slate-500">
-                  {new Date(txn.created_at).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-3 text-slate-400 font-mono text-xs">
-                  {txn.txn_id.substring(0, 8)}...
-                </td>
-              </tr>
-            ))}
+             {loading ? (
+                 <tr>
+                     <td colSpan={5} className="text-center py-8 text-slate-500">載入中...</td>
+                 </tr>
+             ) : (
+                transactions.map((txn) => (
+                <tr key={txn.txn_id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-slate-400" />
+                    {txn.source}
+                    </td>
+                    <td className="px-4 py-3">{txn.purpose}</td>
+                    <td className="px-4 py-3 font-mono font-medium text-emerald-600">
+                    {txn.currency} {Number(txn.amount).toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                    {new Date(txn.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-slate-400 font-mono text-xs">
+                    {txn.txn_id.substring(0, 8)}...
+                    </td>
+                </tr>
+                ))
+             )}
           </tbody>
         </table>
+        </div>
+        
+        {/* Pagination & Sorting Controls */}
+        <div className="flex justify-between items-center p-4 border-t">
+            <div className="flex items-center gap-2">
+                <select 
+                    className="h-9 w-[180px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                        const [newSortBy, newSortOrder] = e.target.value.split('-');
+                        setSortBy(newSortBy);
+                        setSortOrder(newSortOrder);
+                        setPage(1); // Reset to page 1 on sort change
+                    }}
+                >
+                    <option value="created_at-DESC">時間 (新 &rarr; 舊)</option>
+                    <option value="created_at-ASC">時間 (舊 &rarr; 新)</option>
+                    <option value="amount-DESC">金額 (高 &rarr; 低)</option>
+                    <option value="amount-ASC">金額 (低 &rarr; 高)</option>
+                </select>
+            </div>
+
+            <div className="flex items-center gap-4">
+                <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || loading}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                上一頁
+                </button>
+                <span className="text-sm font-medium text-slate-600">
+                    第 {page} 頁 / 共 {totalPages} 頁
+                </span>
+                <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages || loading}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                下一頁
+                </button>
+            </div>
+        </div>
       </div>
     </div>
   )

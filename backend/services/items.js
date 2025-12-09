@@ -139,6 +139,27 @@ export const searchItemByItemId = async (data) => {
 };
 
 /**
+ * Search Items by Name (Report Function A-5)
+ */
+export const searchItemsByName = async (keyword) => {
+    try {
+        const sql = `
+            SELECT i.*, c.category_name 
+            FROM "ITEMS" i
+            LEFT JOIN "ITEM_CATEGORIES" c ON i.category_id = c.category_id
+            WHERE i.item_name ILIKE $1
+            ORDER BY i.item_name ASC
+            LIMIT 50;
+        `;
+        const { rows } = await pool.query(sql, [`%${keyword}%`]);
+        return rows;
+    } catch (error) {
+        console.error('Error searching items by name:', error);
+        throw error;
+    }
+};
+
+/**
  * Get All Items
  */
 export const getAllItems = async () => {

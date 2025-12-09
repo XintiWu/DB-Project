@@ -4,6 +4,7 @@ import { useClaimContext } from '../context/ClaimContext'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
 
 import { Badge } from '../components/ui/badge'
 import { ALL_CATEGORIES } from '../lib/constants'
@@ -16,6 +17,16 @@ export function ClaimConfirmPage() {
 
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    // Initialize quantities from claimItems defaults
+    const defaults: Record<string, number> = {}
+    claimItems.forEach(item => {
+        defaults[item.needId] = item.quantity || 1
+    })
+    setAdjustedQuantities(defaults)
+  }, [claimItems])
 
   useEffect(() => {
     // Optional: If we still want to show name/email in state for some reason? 
@@ -52,9 +63,11 @@ export function ClaimConfirmPage() {
       // items validation logic here if needed
 
       const items = claimItems.map(item => {
+        const finalQty = adjustedQuantities[item.needId] || item.quantity || 1
+        
         // Construct description from various fields
         const descParts = []
-        if (item.quantity) descParts.push(`數量: ${item.quantity} ${item.unit}`)
+        descParts.push(`數量: ${finalQty} ${item.unit}`) // Use finalQty
         if (item.estimatedDelivery) descParts.push(`預計送達: ${item.estimatedDelivery}`) // Assuming date string
         if (item.availableTimeSlots) descParts.push(`時間: ${item.availableTimeSlots}`)
         if (item.qualifications) descParts.push(`資格: ${item.qualifications}`)
@@ -67,14 +80,18 @@ export function ClaimConfirmPage() {
         // Let's add global notes to the description if it exists.
         if (notes) descParts.push(`整體備註: ${notes}`)
 
+        if (notes) descParts.push(`整體備註: ${notes}`)
+
+
         return {
           request_id: item.needId,
-          // ETA is strictly Time with Time Zone in DB. 
-          // We don't have a structured time field, so sending null to avoid DB error.
-          // Time info is preserved in description.
+          // ETA is strictly Time with Time Zone in DB (e.g., "14:00:00+08"). 
+          // The UI provides a Date (e.g., "2025-12-19"), which causes a type error.
+          // Since we preserve the date info in the 'description', we set eta to null.
           eta: null, 
           description: descParts.join(' | '),
-          source: item.materialSource || ''
+          source: item.materialSource || '',
+          qty: adjustedQuantities[item.needId] || item.quantity || 1 // Add qty field explicitly
         }
       })
 
@@ -118,6 +135,8 @@ export function ClaimConfirmPage() {
           <CardContent className="space-y-3">
             {claimItems.map((item) => {
               const category = ALL_CATEGORIES[item.category as keyof typeof ALL_CATEGORIES]
+              const currentQty = adjustedQuantities[item.needId] || item.quantity || 1
+              
               return (
                 <div key={item.needId} className="border rounded-lg p-4 space-y-2">
                   <div className="flex items-start gap-2">
@@ -131,20 +150,32 @@ export function ClaimConfirmPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-sm mt-2 bg-slate-50 p-2 rounded">
+                  <div className="grid grid-cols-2 gap-2 text-sm mt-2 bg-slate-50 p-2 rounded items-center">
                     <div>
-                      <span className="text-muted-foreground">認領數量：</span>
-                      <span className="font-medium">{item.quantity} {item.unit}</span>
+                      <label className="text-xs text-muted-foreground block mb-1">認領數量</label>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                            type="number" 
+                            min={1} 
+                            value={currentQty}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value) || 0
+                                setAdjustedQuantities(prev => ({ ...prev, [item.needId]: val }))
+                            }}
+                            className="h-8 w-24 bg-white"
+                        />
+                        <span className="font-medium text-slate-600">{item.unit}</span>
+                      </div>
                     </div>
                     {item.estimatedDelivery && (
                       <div>
-                        <span className="text-muted-foreground">預計送達：</span>
+                        <span className="text-muted-foreground block mb-1">預計送達</span>
                         <span className="font-medium">{item.estimatedDelivery}</span>
                       </div>
                     )}
                     {item.availableTimeSlots && (
                       <div className="col-span-2">
-                        <span className="text-muted-foreground">可參與時間：</span>
+                        <span className="text-muted-foreground block mb-1">可參與時間</span>
                         <span className="font-medium">{item.availableTimeSlots}</span>
                       </div>
                     )}

@@ -48,6 +48,10 @@ router.delete("/:id", async (req, res) => {
 // I'll add it to service.
 router.get("/", async (req, res) => {
     try {
+        if (req.query.keyword) {
+             const result = await service.searchItemsByName(req.query.keyword);
+             return res.json(result);
+        }
         const result = await service.getAllItems();
         res.json(result);
     } catch (err) {

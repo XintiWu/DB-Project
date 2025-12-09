@@ -111,6 +111,21 @@ export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps)
                 {remaining} {need.unit}
               </span>
             </div>
+            
+            {/* Progress Bar */}
+            <div className="pt-2">
+                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div 
+                        className="h-full bg-blue-500 transition-all duration-500 ease-out"
+                        style={{ width: `${Math.min(100, Math.max(0, (need.currentQuantity / need.requiredQuantity) * 100))}%` }}
+                    />
+                </div>
+                <div className="flex justify-end mt-1">
+                    <span className="text-xs text-slate-400">
+                        已募得 {Math.round((need.currentQuantity / need.requiredQuantity) * 100)}%
+                    </span>
+                </div>
+            </div>
           </div>
         </CardContent>
 

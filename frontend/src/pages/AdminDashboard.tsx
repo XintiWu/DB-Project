@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser } from '../api/client'
+import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser, getIncidentStatsByArea, getTopNeededCategories, getIdleResources, getVolunteerLeaderboard, getSearchKeywordsAnalysis, getFinancialStats } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog'
 import { Textarea } from '../components/ui/textarea'
 import { Label } from '../components/ui/label'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
 import { Users, FileText, AlertTriangle, CheckCircle, Check, X, AlertOctagon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -19,6 +19,7 @@ export function AdminDashboard() {
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
   const [pendingIncidents, setPendingIncidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingFinancials, setLoadingFinancials] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   // Pagination
@@ -28,6 +29,14 @@ export function AdminDashboard() {
   const [incidentPage, setIncidentPage] = useState(1)
   const [totalIncidentPages, setTotalIncidentPages] = useState(1)
   const [totalPendingIncidentCount, setTotalPendingIncidentCount] = useState(0)
+
+  // New Analysis Data State
+  const [incidentStats, setIncidentStats] = useState<any[]>([])
+  const [topNeeded, setTopNeeded] = useState<any[]>([])
+  const [idleResources, setIdleResources] = useState<any[]>([])
+  const [leaderboard, setLeaderboard] = useState<any[]>([])
+  const [keywordStats, setKeywordStats] = useState<any[]>([])
+  const [financialStats, setFinancialStats] = useState<any>(null)
 
   // Warning Dialog State
   const [warningOpen, setWarningOpen] = useState(false)
@@ -66,6 +75,21 @@ export function AdminDashboard() {
             setTotalPendingIncidentCount(incidentsResponse.length)
         }
         setPendingIncidents(incData)
+
+        // Fetch Analysis Data
+        const [incStats, topNeed, idleRes, volLeader, kwStats] = await Promise.all([
+            getIncidentStatsByArea(),
+            getTopNeededCategories(),
+            getIdleResources(30),
+            getVolunteerLeaderboard(10),
+            getSearchKeywordsAnalysis()
+        ])
+        setIncidentStats(incStats)
+        setTopNeeded(topNeed)
+        setIdleResources(idleRes)
+        setLeaderboard(volLeader)
+        setKeywordStats(kwStats)
+
       } catch (err) {
         console.error('Failed to fetch admin data:', err)
         setError('無法載入管理資料')
@@ -75,6 +99,23 @@ export function AdminDashboard() {
     }
     fetchData()
   }, [page, incidentPage])
+
+  // Separate effect for Financial Data (Heavy computation)
+  useEffect(() => {
+      async function fetchFinancials() {
+          try {
+              setLoadingFinancials(true);
+              const finStats = await getFinancialStats();
+              setFinancialStats(finStats);
+          } catch (err) {
+              console.error('Failed to fetch financial stats:', err);
+              // Don't block UI on financial error
+          } finally {
+              setLoadingFinancials(false);
+          }
+      }
+      fetchFinancials();
+  }, []);
 
   const handleReview = async (requestId: string, status: 'Approved' | 'Rejected') => {
     if (!user) return
@@ -147,6 +188,29 @@ export function AdminDashboard() {
   const typeData = byType.map((t: any) => ({ name: t.type, value: parseInt(t.count) }))
   const urgencyData = byUrgency.map((u: any) => ({ name: `等級 ${u.urgency}`, value: parseInt(u.count) }))
 
+  // Prepare Financial Pie Chart Data (Group < 5%)
+  const financialPieData = (() => {
+      if (!financialStats?.byPurpose) return [];
+      const raw = financialStats.byPurpose;
+      const total = raw.reduce((acc: number, cur: any) => acc + parseFloat(cur.total_amount), 0);
+      const grouped: any[] = [];
+      let otherVal = 0;
+
+      raw.forEach((item: any) => {
+          const val = parseFloat(item.total_amount);
+          if (val / total < 0.05) {
+              otherVal += val;
+          } else {
+              grouped.push({ name: item.purpose, value: val });
+          }
+      });
+
+      if (otherVal > 0) {
+          grouped.push({ name: '其他 (Other)', value: otherVal });
+      }
+      return grouped.sort((a, b) => b.value - a.value);
+  })();
+
   return (
     <div className="space-y-8">
       <div>
@@ -174,7 +238,10 @@ export function AdminDashboard() {
                 {totalPendingIncidentCount}
               </span>
             )}
+
           </TabsTrigger>
+          <TabsTrigger value="analysis">進階分析報告</TabsTrigger>
+          <TabsTrigger value="financials">財務分析</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8 mt-6">
@@ -536,18 +603,252 @@ export function AdminDashboard() {
             </div>
             )}
         </TabsContent>
-        </Tabs>
+
+        <TabsContent value="analysis" className="mt-6 space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* B-1 Incident Stats */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>各地區災情統計 (Incident Stats)</CardTitle>
+                        <CardDescription>各行政區目前的災情總數</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                             {incidentStats.map((stat, idx) => (
+                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
+                                     <span>{stat.area_name}</span>
+                                     <span className="font-bold">{stat.incident_count}</span>
+                                 </div>
+                             ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* B-2 Top Needed Categories */}
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>最急需物資類別 (Top Shortages)</CardTitle>
+                        <CardDescription>目前缺口最大的物資類別 (Required - Current)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                             {topNeeded.map((stat, idx) => (
+                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
+                                     <span>{stat.category_name}</span>
+                                     <span className="font-bold text-red-600">{stat.shortage}</span>
+                                 </div>
+                             ))}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                 {/* B-5 Volunteer Leaderboard */}
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>志工貢獻度排行 (Volunteer Leaderboard)</CardTitle>
+                        <CardDescription>協助請求次數最多的使用者</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                             {leaderboard.map((stat, idx) => (
+                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
+                                     <div className="flex items-center gap-2">
+                                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${idx < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100'}`}>
+                                            {idx + 1}
+                                        </span>
+                                        <span>{stat.name}</span>
+                                     </div>
+                                     <span className="font-bold text-green-600">{stat.help_count}</span>
+                                 </div>
+                             ))}
+                        </div>
+                    </CardContent>
+                </Card>
+                
+                 {/* B-4 Search Keywords */}
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>熱門搜尋關鍵字 (Search Trends)</CardTitle>
+                        <CardDescription>使用者最常搜尋的詞彙 (NoSQL Analysis)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-2">
+                             {keywordStats.map((stat, idx) => (
+                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
+                                     <span>{stat._id}</span>
+                                     <span className="font-bold">{stat.count}</span>
+                                 </div>
+                             ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+             {/* B-3 Idle Resources */}
+             <Card>
+                <CardHeader>
+                    <CardTitle>閒置高價值庫存 (Idle Resources)</CardTitle>
+                    <CardDescription>超過 30 天未變動且數量 &gt; 100 的物資</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 font-medium">
+                                <tr>
+                                    <th className="px-4 py-2">Inventory</th>
+                                    <th className="px-4 py-2">Item</th>
+                                    <th className="px-4 py-2">Quantity</th>
+                                    <th className="px-4 py-2">Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {idleResources.map((item, idx) => (
+                                    <tr key={idx} className="border-b">
+                                        <td className="px-4 py-2">{item.inventory_name}</td>
+                                        <td className="px-4 py-2">{item.item_name}</td>
+                                        <td className="px-4 py-2 font-mono">{item.qty}</td>
+                                        <td className="px-4 py-2 text-muted-foreground">{new Date(item.updated_at).toLocaleDateString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+
+        <TabsContent value="financials" className="mt-6 space-y-8">
+            {loadingFinancials ? (
+                <div className="flex justify-center items-center py-12">
+                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
+                     <span className="ml-3 text-slate-600">正在分析百萬筆財務資料...</span>
+                </div>
+            ) : financialStats && (
+                <>
+                 {/* Summary Cards */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card>
+                        <CardHeader className="pb-2">
+                             <CardTitle className="text-sm font-medium">年度交易金額 (Annual Volume)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">
+                                ${(parseFloat(financialStats.summary.total_amount || 0)).toLocaleString()}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                             <CardTitle className="text-sm font-medium">年度交易筆數 (Annual Count)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {parseInt(financialStats.summary.total_count || 0).toLocaleString()}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader className="pb-2">
+                             <CardTitle className="text-sm font-medium">平均交易額 (Annual Avg)</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-blue-600">
+                                ${financialStats.summary.total_count > 0 
+                                    ? (financialStats.summary.total_amount / financialStats.summary.total_count).toFixed(0) 
+                                    : 0}
+                            </div>
+                        </CardContent>
+                    </Card>
+                 </div>
+
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                     {/* Monthly Trend Chart */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>每月資金變動趨勢 (Last 12 Months)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[350px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={[...financialStats.byMonth].reverse()}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis 
+                                        width={80} 
+                                        tickFormatter={(value) => {
+                                            if(value >= 1000000) return `${(value/1000000).toFixed(1)}M`;
+                                            if(value >= 1000) return `${(value/1000).toFixed(0)}k`;
+                                            return value;
+                                        }}
+                                    />
+                                    <Tooltip formatter={(value: any) => `$${parseInt(value).toLocaleString()}`} />
+                                    <Area type="monotone" dataKey="total_amount" stroke="#10b981" fill="#ecfdf5" name="Amount" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* Purpose Breakdown Pie Chart */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>資金用途分佈 (By Purpose)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[350px]">
+                             <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={financialPieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        fill="#8884d8"
+                                        paddingAngle={5}
+                                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                    >
+                                        {/* We need to map over the *processed* data for Cells, but we can't access it easily here if defined inline. 
+                                            Let's move the processing out of the JSX or use a Cell map based on index which might be risky if length changes.
+                                            Actually, Recharts Pie `data` prop accepts the array. 
+                                            I should define the variable before the return statement.
+                                        */}
+                                    </Pie>
+                                    <Tooltip formatter={(value: any) => `$${parseInt(value).toLocaleString()}`} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    {/* Top Donors Bar Chart */}
+                    <Card className="col-span-1 lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle>前五大捐款來源 (Top 5 Sources)</CardTitle>
+                        </CardHeader>
+                        <CardContent className="h-[300px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart layout="vertical" data={financialStats.topSources} margin={{ left: 40, right: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" tickFormatter={(value) => `$${(value/1000).toFixed(0)}k`} />
+                                    <YAxis type="category" dataKey="source" width={120} />
+                                    <Tooltip formatter={(value: any) => `$${parseInt(value).toLocaleString()}`} />
+                                    <Bar dataKey="total_amount" fill="#ec4899" name="Amount" radius={[0, 4, 4, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+                 </div>
+                </>
+            )}
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={warningOpen} onOpenChange={setWarningOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>
             <div className="flex items-center gap-2 text-amber-600 mb-2">
               <AlertOctagon className="h-6 w-6" />
-              <DialogTitle className="text-xl">發出使用者警告</DialogTitle>
+              <DialogTitle className="text-xl">警告用戶 (Warn User)</DialogTitle>
             </div>
             <DialogDescription>
-              您即將對使用者 <span className="font-medium text-slate-900">{selectedRequest?.requester_name || 'Unknown'}</span> 發出警告。
-              此操作將被記錄在系統中，且無法撤銷。
+              請填寫警告原因，這將會發送通知給用戶。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

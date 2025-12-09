@@ -117,14 +117,47 @@ export const getTransactionsByAdminId = async (data) => {
 };
 
 /**
- * Get All Transactions, decending by date (newest first)
+ * Get All Transactions with Pagination and Sorting
  */
-export const getAllTransactions = async () => {
+export const getAllTransactions = async (options = {}) => {
+  const { page = 1, limit = 50, sortBy = 'created_at', sortOrder = 'DESC' } = options;
+  const offset = (page - 1) * limit;
+
+  const validSortColumns = ['created_at', 'amount'];
+  const validSortOrders = ['ASC', 'DESC'];
+
+  let sortClause = 'created_at DESC';
+  if (validSortColumns.includes(sortBy)) {
+      if (sortBy === 'amount') {
+          sortClause = `amount::numeric ${validSortOrders.includes(sortOrder) ? sortOrder : 'DESC'}`;
+      } else {
+          sortClause = `${sortBy} ${validSortOrders.includes(sortOrder) ? sortOrder : 'DESC'}`;
+      }
+  }
+
   try {
-    const sql = 'SELECT *, amount::numeric FROM "FINANCIALS" ORDER BY created_at DESC';
-    const { rows } = await pool.query(sql);
+    const sql = `
+        SELECT *, amount::numeric 
+        FROM "FINANCIALS" 
+        ORDER BY ${sortClause}
+        LIMIT $1 OFFSET $2
+    `;
+    const countSql = 'SELECT COUNT(*) FROM "FINANCIALS"';
     
-    return rows;
+    const [rowsRes, countRes] = await Promise.all([
+      pool.query(sql, [limit, offset]),
+      pool.query(countSql)
+    ]);
+    
+    return {
+      data: rowsRes.rows,
+      meta: {
+        totalItems: parseInt(countRes.rows[0].count),
+        totalPages: Math.ceil(parseInt(countRes.rows[0].count) / limit),
+        currentPage: page,
+        itemsPerPage: limit
+      }
+    };
 
   } catch (error) {
     console.error('Error getting all transactions:', error);
@@ -137,26 +170,45 @@ export const getAllTransactions = async () => {
  */
 export const getFinancialStats = async () => {
   try {
-    const totalSql = 'SELECT COALESCE(SUM(amount::numeric), 0) as total_amount, COUNT(*) as total_count FROM "FINANCIALS"';
-    const purposeSql = 'SELECT purpose, COALESCE(SUM(amount::numeric), 0) as total_amount FROM "FINANCIALS" GROUP BY purpose';
+    const totalSql = `
+      SELECT COALESCE(SUM(amount::numeric), 0) as total_amount, COUNT(*) as total_count 
+      FROM "FINANCIALS"
+      WHERE created_at >= NOW() - INTERVAL '1 year'
+    `;
+    const purposeSql = `
+      SELECT purpose, COALESCE(SUM(amount::numeric), 0) as total_amount 
+      FROM "FINANCIALS" 
+      WHERE created_at >= NOW() - INTERVAL '1 year'
+      GROUP BY purpose
+    `;
     const monthSql = `
       SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COALESCE(SUM(amount::numeric), 0) as total_amount 
       FROM "FINANCIALS" 
+      WHERE created_at >= NOW() - INTERVAL '1 year'
       GROUP BY TO_CHAR(created_at, 'YYYY-MM') 
       ORDER BY month DESC 
-      LIMIT 12
+    `;
+    const sourceSql = `
+      SELECT source, COALESCE(SUM(amount::numeric), 0) as total_amount 
+      FROM "FINANCIALS" 
+      WHERE created_at >= NOW() - INTERVAL '1 year'
+      GROUP BY source 
+      ORDER BY total_amount DESC 
+      LIMIT 5
     `;
 
-    const [totalRes, purposeRes, monthRes] = await Promise.all([
+    const [totalRes, purposeRes, monthRes, sourceRes] = await Promise.all([
       pool.query(totalSql),
       pool.query(purposeSql),
-      pool.query(monthSql)
+      pool.query(monthSql),
+      pool.query(sourceSql)
     ]);
 
     return {
       summary: totalRes.rows[0],
       byPurpose: purposeRes.rows,
-      byMonth: monthRes.rows
+      byMonth: monthRes.rows,
+      topSources: sourceRes.rows
     };
   } catch (error) {
     console.error('Error getting financial stats:', error);

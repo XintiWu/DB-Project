@@ -109,4 +109,56 @@ router.get('/top-features', async (req, res) => {
   }
 });
 
+// Report Function B-1 Route
+router.get('/incident-stats', async (req, res) => {
+    try {
+        const stats = await analyticsService.getIncidentStatsByArea();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Report Function B-2 Route
+router.get('/top-needed-categories', async (req, res) => {
+    try {
+        const stats = await analyticsService.getTopNeededCategories();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Report Function B-3 Route
+router.get('/idle-resources', async (req, res) => {
+    try {
+        const days = req.query.days || 30;
+        const result = await analyticsService.getIdleResources(days);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Report Function B-4 Route
+router.get('/search-keywords-analysis', async (req, res) => {
+    try {
+        const result = await analyticsService.getSearchKeywordsAnalysis();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Report Function B-5 Route
+router.get('/volunteer-leaderboard', async (req, res) => {
+    try {
+        const limit = req.query.limit || 10;
+        const result = await analyticsService.getVolunteerLeaderboard(limit);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

@@ -7,19 +7,42 @@ import { logError } from '../utils/logger.js';
  */
 export const createRequestAccept = async (data) => {
   console.log("createRequestAccept")
-  const { request_id, accepter_id, eta, description, source } = data;
+  console.log("createRequestAccept")
+  const { request_id, accepter_id, eta, description, source, qty } = data; // Add qty
 
   try {
-    const sql = `
-      INSERT INTO "REQUEST_ACCEPTS" (request_id, accepter_id, created_at, eta, description, source)
-      VALUES ($1, $2, NOW(), $3, $4, $5)
+    // Start Transaction
+    await pool.query('BEGIN');
+
+    const sqlAccept = `
+      INSERT INTO "REQUEST_ACCEPTS" (request_id, accepter_id, created_at, eta, description, source, qty)
+      VALUES ($1, $2, NOW(), $3, $4, $5, $6)
       RETURNING *;
     `;
     
-    const { rows } = await pool.query(sql, [request_id, accepter_id, eta, description, source]);
-    return rows[0];
+    // Ensure qty is an integer, default to 1 if not provided
+    const quantity = parseInt(qty) || 1;
+
+    // 1. Create Accept Record
+    const { rows } = await pool.query(sqlAccept, [request_id, accepter_id, eta, description, source, quantity]);
+    const acceptRecord = rows[0];
+
+    // 2. Update REQUESTS current_qty
+    const sqlUpdate = `
+      UPDATE "REQUESTS"
+      SET current_qty = COALESCE(current_qty, 0) + $1
+      WHERE request_id = $2
+      RETURNING current_qty;
+    `;
+    await pool.query(sqlUpdate, [quantity, request_id]);
+
+    // Commit
+    await pool.query('COMMIT');
+
+    return acceptRecord;
 
   } catch (error) {
+    await pool.query('ROLLBACK');
     console.log("createRequestAccept error")
     logError('[Service] createRequestAccept', error);
     throw error;
@@ -124,7 +147,8 @@ export const createBulkRequestAccepts = async (data) => {
          accepter_id,
          eta: item.eta,
          description: item.description,
-         source: item.source
+         source: item.source,
+         qty: item.qty // Add qty
        };
 
        console.log(`[BulkAccept] Calling createRequestAccept for request_id=${request_id}`);
