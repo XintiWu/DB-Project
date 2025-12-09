@@ -106,6 +106,7 @@ interface BaseNeed {
   review_note?: string        // 審核備註
   reviewed_at?: string        // 審核時間
   incident_title?: string     // 關聯災情標題
+  area_name?: string          // 關聯地區名稱
 }
 
 /**

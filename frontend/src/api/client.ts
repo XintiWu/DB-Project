@@ -24,14 +24,16 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export function getAllRequests(options: { page?: number; limit?: number; type?: string; keyword?: string; incident_id?: string } = {}) {
-  const { page, limit, type, keyword, incident_id } = options;
+export function getAllRequests(options: { page?: number; limit?: number; type?: string; keyword?: string; incident_id?: string; area_name?: string; area_id?: string } = {}) {
+  const { page, limit, type, keyword, incident_id, area_name, area_id } = options;
   const params = new URLSearchParams();
   if (page) params.append('page', page.toString());
   if (limit) params.append('limit', limit.toString());
   if (type) params.append('type', type);
   if (keyword) params.append('keyword', keyword);
   if (incident_id) params.append('incident_id', incident_id);
+  if (area_name) params.append('area_name', area_name);
+  if (area_id) params.append('area_id', area_id);
   
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);

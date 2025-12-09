@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNeedData } from '../hooks/useNeedData'
+import { getAllAreas } from '../api/client'
 import { NeedCard } from '../components/NeedCard'
 import { ClaimDialog } from '../components/ClaimDialog'
 import type { Need } from '../lib/types'
 import { Input } from '../components/ui/input'
 import { Search, Filter } from 'lucide-react'
-import { REGIONS } from '../lib/constants'
 import { AnimatePresence } from 'framer-motion'
 
 import { useLocation } from 'react-router-dom'
@@ -46,13 +46,8 @@ export function RequestsPage() {
     }
   }, [selectedNeed])
   
-  // Filter logic - Only Client Side Region Filter remains
-  // Type and Keyword are handled by Backend via useNeedData
-  const filteredNeeds = needs.filter(need => {
-    // Filter by Region (Client side for now)
-    if (filters.region !== '全部' && need.region !== filters.region) return false
-    return true
-  })
+  // Filter logic - Managed by Backend
+  const filteredNeeds = needs
 
   // Search Debounce
   const [searchTerm, setSearchTerm] = useState(filters.keyword)
@@ -64,6 +59,30 @@ export function RequestsPage() {
 
     return () => clearTimeout(timer)
   }, [searchTerm, setFilters])
+
+  // Area Hierarchy State
+  const [areaHierarchy, setAreaHierarchy] = useState<Record<string, { id: string, name: string }[]>>({});
+
+  useEffect(() => {
+    async function fetchAreas() {
+      try {
+        const res = await getAllAreas();
+        // Process areas: Group by City (first 3 chars)
+        const hierarchy: Record<string, { id: string, name: string }[]> = {};
+        res.forEach((area: any) => {
+          const city = area.area_name.substring(0, 3);
+          if (!hierarchy[city]) {
+            hierarchy[city] = [];
+          }
+          hierarchy[city].push({ id: area.area_id, name: area.area_name });
+        });
+        setAreaHierarchy(hierarchy);
+      } catch (err) {
+        console.error('Failed to fetch areas:', err);
+      }
+    }
+    fetchAreas();
+  }, []);
 
   if (loading) return <div className="text-center py-12">載入中...</div>
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
@@ -125,19 +144,51 @@ export function RequestsPage() {
           </button>
         </div>
 
-        {/* Region Filter */}
-        <div className="flex items-center gap-2 p-4 bg-white rounded-lg border shadow-sm">
+        {/* Hierarchical Area Filter */}
+        <div className="flex flex-col sm:flex-row gap-2 p-4 bg-white rounded-lg border shadow-sm">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-600 mr-2">
             <Filter className="h-4 w-4" />
-            地區篩選：
+            地區：
           </div>
           
+          {/* City Dropdown */}
           <select 
-            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            value={filters.region}
-            onChange={(e) => setFilters(prev => ({ ...prev, region: e.target.value }))}
+            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-32"
+            value={filters.city || ''}
+            onChange={(e) => {
+              const newCity = e.target.value;
+              setFilters(prev => ({ 
+                ...prev, 
+                city: newCity, 
+                district: '', // Reset district when city changes
+                area_name: newCity ? newCity : '', // Search by City name if no district
+              }));
+            }}
           >
-            {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            <option value="">全部縣市</option>
+            {Object.keys(areaHierarchy).map(city => (
+              <option key={city} value={city}>{city}</option>
+            ))}
+          </select>
+
+          {/* District Dropdown */}
+          <select 
+            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-32"
+            value={filters.district || ''}
+            disabled={!filters.city}
+            onChange={(e) => {
+               const areaId = e.target.value;
+               setFilters(prev => ({ 
+                 ...prev, 
+                 district: areaId,
+                 area_name: '' // Clear area_name search if precise ID is selected
+               }));
+            }}
+          >
+            <option value="">全部區域</option>
+            {filters.city && areaHierarchy[filters.city]?.map(area => (
+              <option key={area.id} value={area.id}>{area.name.replace(filters.city, '')}</option>
+            ))}
           </select>
         </div>
       </div>

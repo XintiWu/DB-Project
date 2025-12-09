@@ -37,10 +37,12 @@ const BASE_QUERY = `
       WHERE re.request_id = r.request_id
     ) AS required_equipments,
     u.name as requester_name,
-    inc.title as incident_title
+    inc.title as incident_title,
+    a.area_name as area_name
   FROM "REQUESTS" r
   LEFT JOIN "USERS" u ON r.requester_id = u.user_id
   LEFT JOIN "INCIDENTS" inc ON r.incident_id = inc.incident_id
+  LEFT JOIN "AREA" a ON inc.area_id = a.area_id
 `;
 
 /**
@@ -304,7 +306,7 @@ export const getAllUnverifiedRequests = async (params = {}) => {
  * Get ALL requests
  */
 export const getAllRequests = async (params = {}) => {
-  const { page = 1, limit = 10, type, keyword, incident_id } = params;
+  const { page = 1, limit = 10, type, keyword, incident_id, area_name, area_id } = params;
   const offset = (page - 1) * limit;
 
   try {
@@ -341,10 +343,35 @@ export const getAllRequests = async (params = {}) => {
       valIdx++;
     }
 
+    // Filter by Area Name
+    if (area_name) {
+      whereClauses.push(`a.area_name ILIKE $${valIdx}`);
+      values.push(`%${area_name}%`);
+      valIdx++;
+    }
+
+    // Filter by Area ID
+    if (incident_id) {
+       // already handled above
+    }
+    // Correctly handle area_id
+    if (area_id) {
+      whereClauses.push(`inc.area_id = $${valIdx}`);
+      values.push(area_id);
+      valIdx++;
+    }
+
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
     // 1. Get total count
-    const countSql = `SELECT COUNT(*) FROM "REQUESTS" r ${whereSql}`;
+    // Note: We need to join with other tables for count as well if we filter by them
+    const countSql = `
+      SELECT COUNT(*) 
+      FROM "REQUESTS" r 
+      LEFT JOIN "INCIDENTS" inc ON r.incident_id = inc.incident_id
+      LEFT JOIN "AREA" a ON inc.area_id = a.area_id
+      ${whereSql}
+    `;
     const countResult = await pool.query(countSql, values);
     const totalItems = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.ceil(totalItems / limit);

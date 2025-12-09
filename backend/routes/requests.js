@@ -46,8 +46,8 @@ router.get("/", async (req, res) => {
         // Default to all (supports incident_id)
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const { type, keyword, incident_id } = req.query;
-        const result = await service.getAllRequests({ page, limit, type, keyword, incident_id });
+        const { type, keyword, incident_id, area_name, area_id } = req.query;
+        const result = await service.getAllRequests({ page, limit, type, keyword, incident_id, area_name, area_id });
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });

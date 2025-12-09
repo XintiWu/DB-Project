@@ -17,7 +17,10 @@ export function useNeedData(itemsPerPage = 10) {
     keyword: '',
     region: '全部',
     type: 'Material',
-    incidentId: ''
+    incidentId: '',
+    area_name: '',
+    city: '',
+    district: '' // this will be the area_id
   })
 
   useEffect(() => {
@@ -31,7 +34,9 @@ export function useNeedData(itemsPerPage = 10) {
             limit: ITEMS_PER_PAGE,
             type: filters.type,
             keyword: filters.keyword,
-            incident_id: filters.incidentId
+            incident_id: filters.incidentId,
+            area_name: filters.area_name,
+            area_id: filters.district
         })
         
         let rawData = []
@@ -57,14 +62,14 @@ export function useNeedData(itemsPerPage = 10) {
     // Actually we should separate the effect?
     // For now, simple effect:
     fetchData()
-  }, [page, filters.type, filters.keyword, filters.incidentId]) 
+  }, [page, filters.type, filters.keyword, filters.incidentId, filters.area_name, filters.district]) 
   // Note: filters.incidentId is not yet passed to API in this code block! 
   // I need to update getAllRequests in client.ts to accept incidentId or pass it manually. 
   
   // Also resetting page logic:
   useEffect(() => {
       setPage(1)
-  }, [filters.type, filters.keyword, filters.incidentId])
+  }, [filters.type, filters.keyword, filters.incidentId, filters.area_name, filters.district])
 
   return { needs, loading, error, filters, setFilters, page, setPage, totalPages }
 }
