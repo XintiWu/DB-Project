@@ -33,6 +33,27 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Bulk accept requests (for claim functionality) - MUST be before other POST routes
+router.post("/bulk", async (req, res) => {
+  try {
+    console.log('=== Bulk Accept Request ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Items count:', req.body?.items?.length);
+    
+    const result = await service.bulkAcceptRequests(req.body);
+    
+    console.log('Bulk accept result:', JSON.stringify(result, null, 2));
+    res.status(201).json(result);
+  } catch (err) {
+    console.error('Bulk accept error:', err);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ 
+      error: err.message,
+      details: err.stack 
+    });
+  }
+});
+
 router.post("/", async (req, res) => {
   try {
     const result = await service.createRequestAccept(req.body); // Renamed (already was Accepts but verify)

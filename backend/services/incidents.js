@@ -9,6 +9,49 @@ export const createIncident = async (data) => {
     address, status, msg, latitude, longitude 
   } = data;
 
+  // Convert status to valid values: 'Occurring' or 'Solved'
+  // Map common status values to valid ones
+  const statusMap = {
+    'Active': 'Occurring',
+    'Occurring': 'Occurring',
+    'Solved': 'Solved',
+    'Resolved': 'Solved'
+  };
+  const validStatus = statusMap[status] || 'Occurring';
+
+  // Convert severity string to integer (1-5)
+  const severityMap = {
+    'Low': 1,
+    'Medium': 2,
+    'High': 3,
+    'Critical': 4,
+    'Extreme': 5
+  };
+  
+  let severityInt;
+  if (typeof severity === 'string') {
+    severityInt = severityMap[severity] || 2; // Default to 2 (Medium) if unknown
+  } else if (typeof severity === 'number') {
+    severityInt = severity;
+  } else {
+    severityInt = parseInt(severity) || 2;
+  }
+  
+  // 確保 severityInt 是數字
+  if (isNaN(severityInt) || severityInt < 1 || severityInt > 5) {
+    console.warn(`[createIncident] Invalid severity value: ${severity}, defaulting to 2`);
+    severityInt = 2;
+  }
+  
+  console.log(`[createIncident] Converting severity: "${severity}" (${typeof severity}) -> ${severityInt} (${typeof severityInt})`);
+  console.log(`[createIncident] Converting status: "${status}" -> "${validStatus}"`);
+
+  // Prepare values before try block so it's accessible in catch
+  const values = [
+    title, type, severityInt, area_id, reporter_id, 
+    address, validStatus, msg, latitude, longitude
+  ];
+
   try {
     //latitude, longitude can be null
     const sql = `
@@ -17,17 +60,19 @@ export const createIncident = async (data) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING *, reported_at as created_at;
     `;
-
-    const values = [
-      title, type, severity, area_id, reporter_id, 
-      address, status, msg, latitude, longitude
-    ];
+    
+    console.log(`[createIncident] SQL values:`, values.map((v, i) => `$${i+1}=${v} (${typeof v})`).join(', '));
 
     const { rows } = await pool.query(sql, values);
+    console.log(`[createIncident] Successfully created incident ID:`, rows[0]?.incident_id);
     return rows[0]; 
 
   } catch (error) {
-    console.error('Error creating incident:', error);
+    console.error('[createIncident] Error creating incident:', error);
+    console.error('[createIncident] Received data:', JSON.stringify({ 
+      title, type, severity, severityInt, area_id, reporter_id 
+    }, null, 2));
+    console.error('[createIncident] SQL values:', values);
     throw error;
   }
 };
@@ -42,6 +87,18 @@ export const updateIncident = async (data) => {
     address, status, msg, latitude, longitude 
   } = data;
 
+  // Convert severity string to integer (1-5)
+  const severityMap = {
+    'Low': 1,
+    'Medium': 2,
+    'High': 3,
+    'Critical': 4,
+    'Extreme': 5
+  };
+  const severityInt = typeof severity === 'string' 
+    ? (severityMap[severity] || 2)  // Default to 2 (Medium) if unknown
+    : parseInt(severity) || 2;
+
   try {
     const sql = `
       UPDATE "INCIDENTS"
@@ -52,7 +109,7 @@ export const updateIncident = async (data) => {
     `;
     
     const values = [
-      title, type, severity, area_id, 
+      title, type, severityInt, area_id, 
       address, status, msg, latitude, longitude, 
       id
     ];
