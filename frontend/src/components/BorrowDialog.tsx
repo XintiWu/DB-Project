@@ -47,7 +47,7 @@ export function BorrowDialog({ isOpen, onClose, onSuccess, inventoryId, item }: 
          qty: parseInt(qty),
          type: 'BORROW',
          status: 'Pending',
-         to_inventory_id: targetWarehouseId ? parseInt(targetWarehouseId) : null
+         to_inventory_id: (targetWarehouseId && targetWarehouseId !== "0") ? parseInt(targetWarehouseId) : null
       })
       alert('申請已送出，請等待管理員核准。')
       onSuccess()

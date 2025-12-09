@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { createIncident } from '../api/client'
@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { AlertTriangle } from 'lucide-react'
+import { LocationPicker } from '../components/LocationPicker'
 
 const INCIDENT_TYPES = ['Earthquake', 'Flood', 'Fire', 'Landslide', 'Typhoon', 'Other']
 const SEVERITY_LEVELS = ['Low', 'Medium', 'High', 'Critical']
@@ -23,8 +24,25 @@ export function ReportIncidentPage() {
     severity: 'Medium',
     address: '',
     msg: '',
-    area_id: 1 // Default to 1 for now, ideally selectable
+    area_id: '100', // Default to '100' (Taipei Zhongzheng), ideally selectable
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined
   })
+
+  /* eslint-disable */
+  const [areas, setAreas] = useState<any[]>([])
+
+  useEffect(() => {
+    import('../api/client').then(({ getAllAreas }) => {
+        getAllAreas().then(data => {
+            setAreas(data || [])
+            if (data && data.length > 0) {
+                setFormData(prev => ({ ...prev, area_id: data[0].area_id }))
+            }
+        }).catch(console.error)
+    })
+  }, [])
+  /* eslint-enable */
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -42,8 +60,8 @@ export function ReportIncidentPage() {
         ...formData,
         reporter_id: user.user_id,
         status: 'Occurring', // 必須是 'Occurring' 或 'Solved'
-        latitude: null, // Optional
-        longitude: null // Optional
+        latitude: formData.latitude ?? null,
+        longitude: formData.longitude ?? null
       })
       alert('災情通報成功')
       navigate('/incidents')
@@ -128,14 +146,41 @@ export function ReportIncidentPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="address">地點</Label>
+                <Label htmlFor="area">行政區</Label>
+                <select
+                  id="area"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.area_id}
+                  onChange={(e) => setFormData({ ...formData, area_id: e.target.value })}
+                >
+                  {areas.map(area => (
+                      <option key={area.area_id} value={area.area_id}>{area.area_name}</option>
+                  ))}
+                  {areas.length === 0 && <option value="100">台北市中正區 (預設)</option>}
+                </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">詳細地址</Label>
               <Input
                 id="address"
-                placeholder="詳細地址或描述"
+                placeholder="街道巷弄號樓"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>地圖定位 (選擇座標)</Label>
+              <LocationPicker 
+                onLocationSelect={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+              />
+              {formData.latitude && formData.longitude && (
+                 <p className="text-xs text-muted-foreground">
+                   已選擇座標: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                 </p>
+              )}
             </div>
 
             <div className="space-y-2">

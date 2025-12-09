@@ -309,20 +309,22 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate, l
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                {item.status === 'Owned' && (
+                                                  <Button 
+                                                      variant="ghost" 
+                                                      size="sm" 
+                                                      className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+                                                      onClick={() => setTransferItem(item)}
+                                                  >
+                                                      <ArrowRightLeft className="w-4 h-4 mr-1" />
+                                                      轉移
+                                                  </Button>
+                                                )}
                                                 <div className="flex items-center bg-slate-100 rounded-lg p-1">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white hover:shadow-sm" onClick={() => handleUpdateItemQty(item.item_id, item.qty - 1)}>-</Button>
                                                 <span className="w-16 text-center text-sm font-medium">{item.qty} <span className="text-xs text-muted-foreground">{item.unit}</span></span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md hover:bg-white hover:shadow-sm" onClick={() => handleUpdateItemQty(item.item_id, item.qty + 1)}>+</Button>
                                                 </div>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-2"
-                                                    onClick={() => setTransferItem(item)}
-                                                >
-                                                    <ArrowRightLeft className="w-4 h-4 mr-1" />
-                                                    轉移
-                                                </Button>
                                                 <Button variant="ghost" size="icon" className="text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full" onClick={() => handleDeleteItem(item.item_id)}>
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
