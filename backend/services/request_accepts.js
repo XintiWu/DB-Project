@@ -15,18 +15,18 @@ export const createRequestAccept = async (data) => {
     await pool.query('BEGIN');
 
     const sqlAccept = `
-      INSERT INTO "REQUEST_ACCEPTS" (request_id, accepter_id, created_at, eta, description, source, qty)
-      VALUES ($1, $2, NOW(), $3, $4, $5, $6)
+      INSERT INTO "REQUEST_ACCEPTS" (request_id, accepter_id, created_at, "ETA", description, source)
+      VALUES ($1, $2, NOW(), $3, $4, $5)
       RETURNING *;
     `;
     
-    // Ensure qty is an integer, default to 1 if not provided
+    // Ensure qty is an integer, default to 1 if not provided (for updating REQUESTS table)
     const quantity = parseInt(qty) || 1;
 
     // 1. Create Accept Record
     let rows;
     try {
-      const result = await pool.query(sqlAccept, [request_id, accepter_id, eta, description, source, quantity]);
+      const result = await pool.query(sqlAccept, [request_id, accepter_id, eta, description, source]);
       rows = result.rows;
     } catch (insertError) {
       // Handle primary key constraint violation (race condition)
