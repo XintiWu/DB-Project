@@ -66,7 +66,6 @@ npm start
    CREATE DATABASE disaster_platform;
    ```
 
-````
 
 2. **匯入資料表結構**：
    ```bash
