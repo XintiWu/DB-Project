@@ -19,12 +19,15 @@ export function RequestsPage() {
   // Handle navigation from Incident Modal
   useEffect(() => {
     if (location.state) {
-      const { incidentId, type } = location.state as { incidentId?: string, type?: 'material' | 'rescue' }
+      const { incidentId, type } = location.state as { incidentId?: string, type?: string }
       if (incidentId) {
         setFilters(prev => ({ ...prev, incidentId }))
       }
       if (type) {
-        setFilters(prev => ({ ...prev, type }))
+        // Need to cast or validate type if it comes from location state which might be lowercase
+        // But let's assume valid types are pushed. Or map lowercase to Capitalized.
+        const mappedType = type === 'material' ? 'Material' : type === 'tool' ? 'Tool' : type === 'manpower' ? 'Humanpower' : type;
+        setFilters(prev => ({ ...prev, type: mappedType as any }))
       }
       // Clear state to avoid persistent filter on refresh/re-nav (optional, but good practice)
       window.history.replaceState({}, document.title)
@@ -92,31 +95,31 @@ export function RequestsPage() {
         <div className="flex border-b overflow-x-auto">
           <button
             className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
-              filters.type === 'material'
+              filters.type === 'Material'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
-            onClick={() => setFilters(prev => ({ ...prev, type: 'material' }))}
+            onClick={() => setFilters(prev => ({ ...prev, type: 'Material' }))}
           >
             物資需求
           </button>
           <button
             className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
-              filters.type === 'tool'
+              filters.type === 'Tool'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
-            onClick={() => setFilters(prev => ({ ...prev, type: 'tool' }))}
+            onClick={() => setFilters(prev => ({ ...prev, type: 'Tool' }))}
           >
             工具需求
           </button>
           <button
             className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
-              filters.type === 'manpower'
+              filters.type === 'Humanpower'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
-            onClick={() => setFilters(prev => ({ ...prev, type: 'manpower' }))}
+            onClick={() => setFilters(prev => ({ ...prev, type: 'Humanpower' }))}
           >
             人力需求
           </button>

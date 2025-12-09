@@ -6,7 +6,7 @@ import { pool } from '../db.js';
 export const createIncident = async (data) => {
   const { 
     title, type, severity, area_id, reporter_id, 
-    address, status, msg, latitude, longitude 
+    status, msg, latitude, longitude 
   } = data;
 
   // Convert status to valid values: 'Occurring' or 'Solved'
@@ -49,15 +49,15 @@ export const createIncident = async (data) => {
   // Prepare values before try block so it's accessible in catch
   const values = [
     title, type, severityInt, area_id, reporter_id, 
-    address, validStatus, msg, latitude, longitude
+    validStatus, msg, latitude, longitude
   ];
 
   try {
     //latitude, longitude can be null
     const sql = `
       INSERT INTO "INCIDENTS" 
-      (title, type, severity, area_id, reporter_id, address, status, msg, latitude, longitude)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+      (title, type, severity, area_id, reporter_id, status, msg, latitude, longitude)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
       RETURNING *, reported_at as created_at;
     `;
     
@@ -84,7 +84,7 @@ export const updateIncident = async (data) => {
 //data should include id and the fields to update
   const { 
     id, title, type, severity, area_id, 
-    address, status, msg, latitude, longitude 
+    status, msg, latitude, longitude 
   } = data;
 
   // Convert severity string to integer (1-5)
@@ -103,14 +103,14 @@ export const updateIncident = async (data) => {
     const sql = `
       UPDATE "INCIDENTS"
       SET title = $1, type = $2, severity = $3, area_id = $4, 
-          address = $5, status = $6, msg = $7, latitude = $8, longitude = $9
-      WHERE incident_id = $10
+          status = $5, msg = $6, latitude = $7, longitude = $8
+      WHERE incident_id = $9
       RETURNING *, reported_at as created_at;
     `;
     
     const values = [
       title, type, severityInt, area_id, 
-      address, status, msg, latitude, longitude, 
+      status, msg, latitude, longitude, 
       id
     ];
 
@@ -147,15 +147,20 @@ export const searchIncidentsByAreaId = async (data) => {
   const { area_id, status } = data;
 
   try {
-    let sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE area_id = $1';
+    let sql = `
+      SELECT i.*, i.reported_at as created_at, a.area_name 
+      FROM "INCIDENTS" i
+      LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      WHERE i.area_id = $1
+    `;
     const params = [area_id];
     
     if (status) {
-      sql += ' AND status = $2';
+      sql += ' AND i.status = $2';
       params.push(status);
     }
 
-    sql += ' ORDER BY reported_at DESC';
+    sql += ' ORDER BY i.reported_at DESC';
 
     const { rows } = await pool.query(sql, params);
     
@@ -174,20 +179,25 @@ export const searchIncidentsByAreaId = async (data) => {
 export const filterIncidents = async (filters) => {
     const { area_id, status } = filters;
     try {
-        let sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE 1=1';
+        let sql = `
+          SELECT i.*, i.reported_at as created_at, a.area_name 
+          FROM "INCIDENTS" i
+          LEFT JOIN "AREA" a ON i.area_id = a.area_id
+          WHERE 1=1
+        `;
         const params = [];
         let pIdx = 1;
 
         if (area_id) {
-            sql += ` AND area_id = $${pIdx++}`;
+            sql += ` AND i.area_id = $${pIdx++}`;
             params.push(area_id);
         }
         if (status) {
-            sql += ` AND status = $${pIdx++}`;
+            sql += ` AND i.status = $${pIdx++}`;
             params.push(status);
         }
 
-        sql += ' ORDER BY reported_at DESC';
+        sql += ' ORDER BY i.reported_at DESC';
         
         const { rows } = await pool.query(sql, params);
         return rows;
@@ -204,7 +214,12 @@ export const searchIncidentsByReporterId = async (data) => {
   const { reporter_id } = data;
 
   try {
-    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE reporter_id = $1';
+    const sql = `
+      SELECT i.*, i.reported_at as created_at, a.area_name 
+      FROM "INCIDENTS" i
+      LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      WHERE i.reporter_id = $1
+    `;
     const { rows } = await pool.query(sql, [reporter_id]);
     
     return rows; //Incident list
@@ -231,7 +246,14 @@ export const getAllIncidents = async (pagination = {}) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     // 2. Get paginated data
-    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" ORDER BY reported_at DESC LIMIT $1 OFFSET $2';
+    // 2. Get paginated data
+    const sql = `
+      SELECT i.*, i.reported_at as created_at, a.area_name 
+      FROM "INCIDENTS" i
+      LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      ORDER BY i.reported_at DESC 
+      LIMIT $1 OFFSET $2
+    `;
     const { rows } = await pool.query(sql, [limit, offset]);
     
     return {
@@ -254,7 +276,12 @@ export const getAllIncidents = async (pagination = {}) => {
  */
 export const getIncidentById = async (id) => {
   try {
-    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" WHERE incident_id = $1';
+    const sql = `
+      SELECT i.*, i.reported_at as created_at, a.area_name 
+      FROM "INCIDENTS" i
+      LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      WHERE i.incident_id = $1
+    `;
     const { rows } = await pool.query(sql, [id]);
     return rows[0];
   } catch (error) {
@@ -301,11 +328,13 @@ export const getAllUnverifiedIncidents = async (pagination = {}) => {
     const totalPages = Math.ceil(totalItems / limit);
 
     // 2. Get paginated data
+    // 2. Get paginated data
     const sql = `
-      SELECT *, reported_at as created_at 
-      FROM "INCIDENTS" 
-      WHERE review_status IS NULL OR review_status = 'Unverified'
-      ORDER BY reported_at ASC 
+      SELECT i.*, i.reported_at as created_at, a.area_name 
+      FROM "INCIDENTS" i
+      LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      WHERE i.review_status IS NULL OR i.review_status = 'Unverified'
+      ORDER BY i.reported_at ASC 
       LIMIT $1 OFFSET $2
     `;
     const { rows } = await pool.query(sql, [limit, offset]);

@@ -17,9 +17,11 @@ import {
   approveLend,
   rejectLend,
   getAllItems,
-  getWarehouseLends
+  getWarehouseLends,
+  returnLend,
+  returnInventoryItem
 } from '../api/client'
-import { Package, Save, Trash2, Plus, ArrowRightLeft, Settings, Users, X } from "lucide-react"
+import { Package, Save, Trash2, Plus, ArrowRightLeft, Settings, Users, X, RotateCcw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { TransferDialog } from "./TransferDialog"
 
@@ -105,6 +107,29 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate, l
       } catch (e: any) {
           alert('拒絕失敗: ' + e.message)
       }
+  }
+
+  const handleReturnLend = async (lendId: number) => {
+    if (!confirm('確定此物品已歸還？')) return
+    try {
+        await returnLend(lendId)
+        alert('已標記為歸還')
+        fetchLends()
+        fetchDetails() // update local inventory if returned
+    } catch (e: any) {
+        alert('操作失敗: ' + e.message)
+    }
+  }
+
+  const handleReturnItem = async (itemId: number) => {
+    if (!confirm('確定由本倉庫歸還此物品？')) return
+    try {
+        await returnInventoryItem(warehouse.inventory_id, itemId)
+        alert('歸還成功')
+        fetchDetails()
+    } catch (e: any) {
+        alert('歸還失敗: ' + e.message)
+    }
   }
 
   const fetchAllSystemItems = async () => {
@@ -309,6 +334,17 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate, l
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                {item.status === 'Borrowed' && (
+                                                  <Button 
+                                                      variant="outline" 
+                                                      size="sm" 
+                                                      className="h-8 text-orange-600 border-orange-200 hover:bg-orange-50 px-2"
+                                                      onClick={() => handleReturnItem(item.item_id)}
+                                                  >
+                                                      <RotateCcw className="w-4 h-4 mr-1" />
+                                                      歸還
+                                                  </Button>
+                                                )}
                                                 {item.status === 'Owned' && (
                                                   <Button 
                                                       variant="ghost" 
@@ -369,13 +405,19 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate, l
                                                         <Button size="sm" variant="destructive" onClick={() => handleRejectLend(lend.lend_id)}>拒絕</Button>
                                                         <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleApproveLend(lend.lend_id)}>核准</Button>
                                                     </div>
+                                                ) : lend.status === 'Borrowing' ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-green-600">借用中</span>
+                                                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleReturnLend(lend.lend_id)}>
+                                                            <RotateCcw className="w-3 h-3 mr-1" />
+                                                            歸還
+                                                        </Button>
+                                                    </div>
                                                 ) : (
                                                     <span className={`text-sm font-medium ${
-                                                        lend.status === 'Borrowing' ? 'text-green-600' : 
                                                         lend.status === 'Rejected' ? 'text-red-600' : 'text-slate-500'
                                                     }`}>
-                                                        {lend.status === 'Borrowing' ? '借用中' : 
-                                                            lend.status === 'Rejected' ? '已拒絕' : 
+                                                        {lend.status === 'Rejected' ? '已拒絕' : 
                                                             lend.status === 'Returned' ? '已歸還' : lend.status}
                                                     </span>
                                                 )}

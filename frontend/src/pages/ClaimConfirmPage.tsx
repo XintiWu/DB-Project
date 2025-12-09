@@ -9,15 +9,20 @@ import { Input } from '../components/ui/input'
 import { Badge } from '../components/ui/badge'
 import { ALL_CATEGORIES } from '../lib/constants'
 import { submitClaim } from '../api/client'
+import { Trash2 } from 'lucide-react'
 
 export function ClaimConfirmPage() {
   const navigate = useNavigate()
-  const { claimItems, clearClaimList, getTotalItems } = useClaimContext()
+  const { claimItems, clearClaimList, getTotalItems, removeFromClaimList } = useClaimContext()
   const { user } = useAuth()
 
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [adjustedQuantities, setAdjustedQuantities] = useState<Record<string, number>>({})
+  
+  // Import Icon (Assuming Lucide is used elsewhere, checking imports)
+  // Need to add import { Trash2 } from 'lucide-react' at top
+
 
   useEffect(() => {
     // Initialize quantities from claimItems defaults
@@ -165,6 +170,14 @@ export function ClaimConfirmPage() {
                         </Badge>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost" 
+                      size="icon"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
+                      onClick={() => removeFromClaimList(item.needId)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm mt-2 bg-slate-50 p-2 rounded items-center">
                     <div>

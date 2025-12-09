@@ -86,7 +86,7 @@ export function PublishPage() {
       // Construct payload based on schema
       const payload: any = {
         requester_id: 1, // Mock user ID for now
-        incident_id: incidentId ? parseInt(incidentId) : 1, // Default to incident 1 if not provided (should ideally block or select)
+        incident_id: incidentId ? parseInt(incidentId) : null,
         status: 'Not Completed',
         urgency,
         type,

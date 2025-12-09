@@ -9,6 +9,11 @@ router.get("/", async (req, res) => {
         const result = await service.searchSheltersByAreaId({ area_id: req.query.area_id });
         return res.json(result);
     }
+    if (req.query.latitude && req.query.longitude) {
+        const { latitude, longitude, limit } = req.query;
+        const result = await service.getNearbyShelters(latitude, longitude, parseInt(limit) || 10);
+        return res.json(result);
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const { keyword } = req.query;

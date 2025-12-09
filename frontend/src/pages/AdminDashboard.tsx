@@ -402,7 +402,7 @@ export function AdminDashboard() {
                       <div className="col-span-2 grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-md">
                         <div><span className="text-muted-foreground">Request ID:</span> <span className="font-mono">{req.request_id}</span></div>
                         <div><span className="text-muted-foreground">Requester:</span> {req.requester_name} (ID: {req.requester_id})</div>
-                        <div><span className="text-muted-foreground">Incident ID:</span> {req.incident_id}</div>
+                        <div><span className="text-muted-foreground">Incident:</span> {req.incident_title ? `${req.incident_title} (${req.incident_id})` : req.incident_id}</div>
                         <div><span className="text-muted-foreground">Status:</span> {req.status}</div>
                         <div><span className="text-muted-foreground">Coordinates:</span> {req.latitude}, {req.longitude}</div>
                         <div><span className="text-muted-foreground">Qty (Req/Cur):</span> {req.required_qty} / {req.current_qty}</div>
@@ -547,9 +547,7 @@ export function AdminDashboard() {
                             <div><span className="text-muted-foreground">Location:</span> {inc.latitude}, {inc.longitude}</div>
                           </div>
                           
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Address:</span> {inc.address}
-                          </div>
+
                           <div className="col-span-2">
                              <span className="text-muted-foreground">Message:</span> 
                              <p className="mt-1 p-2 bg-slate-50 rounded border text-slate-700">{inc.msg}</p>

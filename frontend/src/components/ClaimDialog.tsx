@@ -30,7 +30,7 @@ export function ClaimDialog({ need, onClose }: ClaimDialogProps) {
   const [availableEndTime, setAvailableEndTime] = useState('')
   const [qualifications, setQualifications] = useState('')
 
-  const isMaterialOrTool = need.needType === 'material' || need.needType === 'tool'
+  const isMaterialOrTool = need.needType === 'Material' || need.needType === 'Tool'
   const remaining = need.requiredQuantity - need.currentQuantity
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -124,7 +124,7 @@ export function ClaimDialog({ need, onClose }: ClaimDialogProps) {
                             {item.isTool && <Badge variant="outline" className="text-[10px] h-4 px-1">工具</Badge>}
                           </div>
                         ))
-                      ) : (need.needType === 'tool' && (need as any).equipments && (need as any).equipments.length > 0) ? (
+                      ) : (need.needType === 'Tool' && (need as any).equipments && (need as any).equipments.length > 0) ? (
                         <div>
                           <p className="text-xs text-slate-500 mb-1">所需設備:</p>
                           <ul className="list-disc list-inside">

@@ -77,6 +77,15 @@ router.put("/:id/return", async (req, res) => {
   }
 });
 
+router.post("/return-item", async (req, res) => {
+    try {
+        const result = await service.returnLendByItem(req.body);
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Generic update? Service missing generic update.
 // Assuming only return is supported or add generic update if needed.
 // Base controller had generic update.

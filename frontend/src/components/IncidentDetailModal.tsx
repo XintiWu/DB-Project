@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
-import { X, AlertTriangle, MapPin, Calendar, ArrowRight } from 'lucide-react'
+import { X, AlertTriangle, MapPin, Calendar, ArrowRight, ShieldCheck, UserCheck, MessageSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { Incident, Need } from '../lib/types'
+import type { Incident, Need, HumanpowerNeed } from '../lib/types'
 import { getRequestsByIncidentId } from '../api/client'
 import { parseNeed } from '../lib/utils'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent } from './ui/card'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ClaimDialog } from './ClaimDialog'
 
 interface IncidentDetailModalProps {
   incident: Incident
@@ -18,7 +19,8 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
   const navigate = useNavigate()
   const [requests, setRequests] = useState<Need[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'material' | 'tool' | 'manpower'>('material')
+  const [activeTab, setActiveTab] = useState<'Material' | 'Tool' | 'Humanpower'>('Material')
+  const [selectedClaimNeed, setSelectedClaimNeed] = useState<Need | null>(null)
 
   useEffect(() => {
     async function fetchRequests() {
@@ -39,16 +41,13 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
   }, [incident.incident_id])
 
   const filteredRequests = requests.filter(req => 
-    activeTab === 'material' ? req.needType === 'material' : 
-    activeTab === 'tool' ? req.needType === 'tool' :
-    req.needType === 'manpower'
+    activeTab === 'Material' ? req.needType === 'Material' : 
+    activeTab === 'Tool' ? req.needType === 'Tool' :
+    req.needType === 'Humanpower'
   )
 
   const handleClaimClick = (req: Need) => {
-    // Navigate to requests page with query params or state to highlight/filter
-    // For now, we'll just go to the requests page with the correct tab
-    // Ideally, we would pass the incident ID to filter, but RequestsPage needs to support it
-    navigate('/requests', { state: { incidentId: incident.incident_id, type: req.needType } })
+    setSelectedClaimNeed(req)
   }
 
   return (
@@ -77,13 +76,19 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
               <Badge variant={incident.severity === 'High' || incident.severity === 'Critical' ? 'destructive' : 'default'}>
                 {incident.severity}
               </Badge>
+              {incident.review_status === 'Approved' && (
+                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 gap-1 pl-1 pr-2">
+                  <ShieldCheck className="h-3 w-3" />
+                  已審核
+                </Badge>
+              )}
               <span className="text-sm text-muted-foreground">{incident.type}</span>
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-slate-900">{incident.title}</h2>
             <div className="flex items-center gap-4 text-sm text-slate-600 mt-2">
               <div className="flex items-center gap-1">
                 <MapPin className="h-4 w-4" />
-                {incident.address}
+                {incident.area_name || '未知區域'} ({incident.latitude ? `${Number(incident.latitude).toFixed(4)}, ${Number(incident.longitude).toFixed(4)}` : '未定位'})
               </div>
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -98,6 +103,31 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
             <X className="h-6 w-6 text-slate-500" />
           </button>
         </div>
+
+        {/* Review Info Section (Show if Reviewed) */}
+        {incident.review_status && (incident.review_status === 'Approved' || incident.review_status === 'Rejected') && (
+            <div className="px-6 pt-4 pb-0">
+            <div className={`p-3 rounded-lg border text-sm flex gap-3 ${
+                incident.review_status === 'Approved' 
+                ? 'bg-green-50/50 border-green-100 text-green-800' 
+                : 'bg-red-50/50 border-red-100 text-red-800'
+            }`}>
+                <UserCheck className="h-5 w-5 shrink-0" />
+                <div className="flex-1 space-y-1">
+                <div className="font-medium flex items-center justify-between">
+                    <span>管理員審核：{incident.review_status === 'Approved' ? '通過' : '駁回'}</span>
+                    {incident.reviewed_at && <span className="text-xs opacity-70">{new Date(incident.reviewed_at).toLocaleDateString()}</span>}
+                </div>
+                {incident.review_note && (
+                    <div className="flex items-start gap-1 mt-1 opacity-90">
+                    <MessageSquare className="h-3 w-3 mt-0.5" />
+                    {incident.review_note}
+                    </div>
+                )}
+                </div>
+            </div>
+            </div>
+        )}
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
@@ -121,9 +151,9 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
               {/* Tabs */}
               <div className="flex bg-slate-100/50 p-1 rounded-lg">
                 <button
-                  onClick={() => setActiveTab('material')}
+                  onClick={() => setActiveTab('Material')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    activeTab === 'material' 
+                    activeTab === 'Material' 
                       ? 'bg-white shadow-sm text-blue-600' 
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
@@ -131,9 +161,9 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
                   物資需求
                 </button>
                 <button
-                  onClick={() => setActiveTab('tool')}
+                  onClick={() => setActiveTab('Tool')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    activeTab === 'tool' 
+                    activeTab === 'Tool' 
                       ? 'bg-white shadow-sm text-blue-600' 
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
@@ -141,9 +171,9 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
                   工具需求
                 </button>
                 <button
-                  onClick={() => setActiveTab('manpower')}
+                  onClick={() => setActiveTab('Humanpower')}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                    activeTab === 'manpower' 
+                    activeTab === 'Humanpower' 
                       ? 'bg-white shadow-sm text-blue-600' 
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
@@ -173,7 +203,7 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
                       <div>
                         <h4 className="font-medium text-slate-900">{req.title}</h4>
                         <div className="text-sm text-slate-500 mt-1">
-                          {(req.needType === 'material' || req.needType === 'tool') ? (
+                          {(req.needType === 'Material' || req.needType === 'Tool') ? (
                             <div className="space-y-1">
                               {(req as any).items && (req as any).items.length > 0 ? (
                                 (req as any).items.map((item: any, idx: number) => (
@@ -190,9 +220,9 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
                           ) : (
                             <div className="space-y-1">
                               {(req as any).headcount && <div>需求人數: {(req as any).headcount} 人</div>}
-                              {(req as any).skills && (req as any).skills.length > 0 && (
+                              {(req as HumanpowerNeed).skills && (req as HumanpowerNeed).skills.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
-                                  {(req as any).skills.map((s: any, i: number) => (
+                                  {(req as HumanpowerNeed).skills.map((s: any, i: number) => (
                                     <Badge key={i} variant="secondary" className="text-[10px]">
                                       {s.skillName} {s.quantity ? `x${s.quantity}` : ''}
                                     </Badge>
@@ -204,7 +234,8 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
                                   需要設備: {(req as any).equipments.map((e: any) => `${e.equipmentName} x${e.quantity}`).join(', ')}
                                 </div>
                               )}
-                              {!(req as any).headcount && (!(req as any).skills || (req as any).skills.length === 0) && (!(req as any).equipments || (req as any).equipments.length === 0) && (
+                                {/* Fallback display */}
+                                {!(req as any).headcount && (!(req as HumanpowerNeed).skills || (req as HumanpowerNeed).skills.length === 0) && (!(req as any).equipments || (req as any).equipments.length === 0) && (
                                 <span>需求: {req.category}</span>
                               )}
                             </div>
@@ -226,7 +257,7 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
               </div>
             ) : (
               <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 text-slate-500">
-                目前沒有相關的{activeTab === 'material' ? '物資' : '救援'}需求
+                目前沒有相關的{activeTab === 'Material' ? '物資' : '救援'}需求
                 <div className="mt-4 text-xs text-slate-400">
                   Debug: IncidentID={incident.incident_id}, TotalRequests={requests.length}
                 </div>
@@ -235,6 +266,15 @@ export function IncidentDetailModal({ incident, onClose }: IncidentDetailModalPr
           </section>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {selectedClaimNeed && (
+          <ClaimDialog 
+            need={selectedClaimNeed as Need} 
+            onClose={() => setSelectedClaimNeed(null)} 
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

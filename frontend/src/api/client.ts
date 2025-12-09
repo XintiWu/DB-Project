@@ -79,6 +79,10 @@ export function getAllShelters(options: { page?: number; limit?: number; keyword
   return request<{ data: any[]; meta: any } | any[]>(`/shelters${query}`);
 }
 
+export function getNearbyShelters(latitude: number, longitude: number, limit: number = 10) {
+  return request<any[]>(`/shelters?latitude=${latitude}&longitude=${longitude}&limit=${limit}`);
+}
+
 export function getAllInventories(options: { page?: number; limit?: number } = {}) {
   const { page, limit } = options;
   let query = "";
@@ -343,4 +347,17 @@ export function rejectLend(lendId: string | number) {
 
 export function getUserLends(userId: string | number) {
   return request<any[]>(`/lends/user/${userId}`);
+}
+
+export function returnLend(lendId: string | number) {
+  return request<any>(`/lends/${lendId}/return`, {
+    method: "PUT"
+  });
+}
+
+export function returnInventoryItem(inventoryId: string | number, itemId: string | number) {
+  return request<any>(`/lends/return-item`, {
+    method: "POST",
+    body: JSON.stringify({ inventory_id: inventoryId, item_id: itemId })
+  });
 }

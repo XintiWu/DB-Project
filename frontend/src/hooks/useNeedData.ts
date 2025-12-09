@@ -16,7 +16,7 @@ export function useNeedData(itemsPerPage = 10) {
   const [filters, setFilters] = useState({
     keyword: '',
     region: '全部',
-    type: 'material',
+    type: 'Material',
     incidentId: ''
   })
 

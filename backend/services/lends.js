@@ -416,3 +416,33 @@ export const getAllLends = async () => {
     throw error;
   }
 };
+
+/**
+ * Return an item based on inventory and item ID (for Borrower Side)
+ * Finds an active lend where to_inventory_id matches
+ */
+export const returnLendByItem = async (data) => {
+    const { inventory_id, item_id } = data;
+    try {
+        // Find active lend
+        const sql = `
+            SELECT lend_id FROM "LENDS"
+            WHERE to_inventory_id = $1 
+            AND item_id = $2 
+            AND status = 'Borrowing'
+            ORDER BY lend_at ASC
+            LIMIT 1;
+        `;
+        const { rows } = await pool.query(sql, [inventory_id, item_id]);
+        
+        if (rows.length === 0) {
+            throw new Error('找不到對應的借用記錄 (可能已歸還或非借用物品)');
+        }
+        
+        return await returnLend({ lend_id: rows[0].lend_id });
+        
+    } catch (error) {
+        console.error('Error returning lend by item:', error);
+        throw error;
+    }
+};

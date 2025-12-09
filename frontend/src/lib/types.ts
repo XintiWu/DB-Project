@@ -4,7 +4,7 @@
 /**
  * 需求類型
  */
-export type NeedType = 'material' | 'tool' | 'manpower' | 'rescue'
+export type NeedType = 'Material' | 'Tool' | 'Humanpower'
 
 /**
  * 緊急程度
@@ -103,23 +103,26 @@ interface BaseNeed {
   managementKey: string       // 管理金鑰
   incidentId?: string         // 關聯災情 ID
   review_status?: string      // 審核狀態
+  review_note?: string        // 審核備註
+  reviewed_at?: string        // 審核時間
+  incident_title?: string     // 關聯災情標題
 }
 
 /**
- * 物資需求 (DB Type: material)
+ * 物資需求 (DB Type: Material)
  */
 export interface MaterialNeed extends BaseNeed {
-  needType: 'material'
+  needType: 'Material'
   items: MaterialItem[]
   category: string
 }
 
 /**
- * 工具需求 (DB Type: tool)
+ * 工具需求 (DB Type: Tool)
  * Includes Equipments
  */
 export interface ToolNeed extends BaseNeed {
-  needType: 'tool'
+  needType: 'Tool'
   equipments: RescueEquipment[]
   timeSlots: string
   providedSupport: string
@@ -127,11 +130,11 @@ export interface ToolNeed extends BaseNeed {
 }
 
 /**
- * 人力需求 (DB Type: humanpower)
+ * 人力需求 (DB Type: Humanpower)
  * Includes Skills
  */
-export interface ManpowerNeed extends BaseNeed {
-  needType: 'manpower' // Mapped from 'humanpower'
+export interface HumanpowerNeed extends BaseNeed {
+  needType: 'Humanpower'
   skills: RescueSkill[]
   timeSlots: string
   providedSupport: string
@@ -141,7 +144,7 @@ export interface ManpowerNeed extends BaseNeed {
 /**
  * 統一需求類型
  */
-export type Need = MaterialNeed | ToolNeed | ManpowerNeed
+export type Need = MaterialNeed | ToolNeed | HumanpowerNeed
 
 /**
  * 認領項目
@@ -240,13 +243,16 @@ export interface Incident {
   severity: string
   area_id: number
   reporter_id: string
-  address: string
   status: string
   msg: string
   latitude: number | null
   longitude: number | null
   created_at: string
   reported_at?: string
+  review_status?: string
+  review_note?: string
+  reviewed_at?: string
+  area_name?: string
 }
 
 /**
@@ -262,6 +268,7 @@ export interface Shelter {
   latitude: number | null
   longitude: number | null
   area_id: number
+  distance?: number
 }
 
 /**

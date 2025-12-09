@@ -119,7 +119,7 @@ export function IncidentsPage() {
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="h-4 w-4" />
-                  <span>{incident.address}</span>
+                  <span>{incident.area_name || '未知區域'} ({incident.latitude ? `${Number(incident.latitude).toFixed(3)}, ${Number(incident.longitude).toFixed(3)}` : '未定位'})</span>
                 </div>
 
                 <p className="text-sm text-slate-600 line-clamp-2">

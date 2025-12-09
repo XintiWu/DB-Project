@@ -215,7 +215,7 @@ export function ProfilePage() {
                     </div>
                     <CardDescription className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      {incident.address}
+                      {incident.area_name} ({incident.latitude ? `${Number(incident.latitude).toFixed(3)}, ${Number(incident.longitude).toFixed(3)}` : '未定位'})
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

@@ -46,6 +46,13 @@ export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps)
                   <MapPin className="h-3 w-3" />
                   <span className="line-clamp-1">{need.location}</span>
                 </div>
+                {need.incident_title && (
+                   <div className="mt-1">
+                     <Badge variant="outline" className="text-[10px] h-5 border-blue-200 text-blue-600 bg-blue-50 px-1.5 font-normal">
+                        關聯: {need.incident_title}
+                     </Badge>
+                   </div>
+                )}
               </div>
             </div>
             <div className="flex flex-col items-end gap-1">
@@ -58,19 +65,20 @@ export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps)
                   已審核
                 </Badge>
               )}
+
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="p-4 flex-1 space-y-3">
           <div className="flex gap-2 flex-wrap">
-            {need.needType === 'manpower' && (need as any).skills?.length > 0 ? (
+            {need.needType === 'Humanpower' && (need as any).skills?.length > 0 ? (
               (need as any).skills.map((skill: any, idx: number) => (
                 <Badge key={idx} variant="secondary" className={category.color}>
                   {skill.skillName}
                 </Badge>
               ))
-            ) : need.needType === 'tool' && (need as any).equipments?.length > 0 ? (
+            ) : need.needType === 'Tool' && (need as any).equipments?.length > 0 ? (
               (need as any).equipments.map((equip: any, idx: number) => (
                 <Badge key={idx} variant="secondary" className={category.color}>
                   {equip.equipmentName}
@@ -82,7 +90,7 @@ export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps)
               </Badge>
             )}
             
-            {(need.needType === 'manpower' || need.needType === 'tool') && (
+            {(need.needType === 'Humanpower' || need.needType === 'Tool') && (
               <Badge variant="outline" className="bg-slate-50">
                 <Clock className="h-3 w-3 mr-1" />
                 {(need as any).timeSlots}

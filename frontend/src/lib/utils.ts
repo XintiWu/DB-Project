@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Need, MaterialNeed, ToolNeed, ManpowerNeed } from './types'
+import type { Need, MaterialNeed, ToolNeed, HumanpowerNeed } from './types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -114,22 +114,28 @@ export function parseNeed(row: any): Need {
     status: row.status,
     createdAt: row.request_date,
     managementKey: 'N/A',
-    incidentId: row.incident_id ? String(row.incident_id) : undefined
+    incidentId: row.incident_id ? String(row.incident_id) : undefined,
+    incident_title: row.incident_title, // Map incident_title
+    review_status: row.review_status,
+    review_note: row.review_note,
+    reviewed_at: row.reviewed_at
   }
 
+  // No lowercase conversion needed if DB returns 'Material', 'Tool', 'Humanpower'
+  // But let's be safe and normalize to Title Case or check case-insensitively
   const type = row.type ? row.type.toLowerCase() : ''
   
   if (type === 'material') {
     return {
       ...baseNeed,
-      needType: 'material',
+      needType: 'Material',
       category: getCategoryKey(row.category, 'Item'),
       items: materialItems
     } as MaterialNeed
   } else if (type === 'tool') {
     return {
       ...baseNeed,
-      needType: 'tool',
+      needType: 'Tool',
       category: getCategoryKey(row.category, 'Rescue'),
       timeSlots: row.time_slots || '',
       equipments: equipments,
@@ -138,19 +144,19 @@ export function parseNeed(row: any): Need {
   } else if (type === 'humanpower') {
     return {
       ...baseNeed,
-      needType: 'manpower',
+      needType: 'Humanpower',
       category: getCategoryKey(row.category, 'Rescue'),
       timeSlots: row.time_slots || '',
       skills: skills,
       providedSupport: row.provided_support || ''
-    } as ManpowerNeed
+    } as HumanpowerNeed
   } else {
     // Fallback for legacy data or unknown types
     // If it has items, treat as material
     if (materialItems.length > 0) {
       return {
         ...baseNeed,
-        needType: 'material',
+        needType: 'Material',
         category: getCategoryKey(row.category, 'Item'),
         items: materialItems
       } as MaterialNeed
@@ -159,7 +165,7 @@ export function parseNeed(row: any): Need {
     if (equipments.length > 0) {
       return {
         ...baseNeed,
-        needType: 'tool',
+        needType: 'Tool',
         category: getCategoryKey(row.category, 'Rescue'),
         timeSlots: row.time_slots || '',
         equipments: equipments,
@@ -169,11 +175,11 @@ export function parseNeed(row: any): Need {
     // Default to manpower (humanpower)
     return {
       ...baseNeed,
-      needType: 'manpower',
+      needType: 'Humanpower',
       category: getCategoryKey(row.category, 'Rescue'),
       timeSlots: row.time_slots || '',
       skills: skills,
       providedSupport: row.provided_support || ''
-    } as ManpowerNeed
+    } as HumanpowerNeed
   }
 }

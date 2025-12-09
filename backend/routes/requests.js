@@ -32,10 +32,10 @@ router.get("/", async (req, res) => {
             const result = await service.getRequestsByRequesterId({ requester_id: req.query.requester_id });
             return res.json(result);
         }
-        // if (req.query.incident_id) {
-        //     const result = await service.getRequestsByIncidentId({ incident_id: req.query.incident_id });
-        //     return res.json(result);
-        // }
+        if (req.query.incident_id) {
+            const result = await service.getRequestsByIncidentId({ incident_id: req.query.incident_id });
+            return res.json(result);
+        }
         if (req.query.unverified) {
              const page = parseInt(req.query.page) || 1;
              const limit = parseInt(req.query.limit) || 10;

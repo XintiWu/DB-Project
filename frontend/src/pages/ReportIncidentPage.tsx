@@ -22,7 +22,6 @@ export function ReportIncidentPage() {
     title: '',
     type: 'Earthquake',
     severity: 'Medium',
-    address: '',
     msg: '',
     area_id: '100', // Default to '100' (Taipei Zhongzheng), ideally selectable
     latitude: undefined as number | undefined,
@@ -160,16 +159,6 @@ export function ReportIncidentPage() {
                 </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="address">詳細地址</Label>
-              <Input
-                id="address"
-                placeholder="街道巷弄號樓"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                required
-              />
-            </div>
 
             <div className="space-y-2">
               <Label>地圖定位 (選擇座標)</Label>

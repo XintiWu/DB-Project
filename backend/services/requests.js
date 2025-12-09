@@ -36,9 +36,11 @@ const BASE_QUERY = `
       JOIN "ITEMS" i ON re.required_equipment = i.item_id
       WHERE re.request_id = r.request_id
     ) AS required_equipments,
-    u.name as requester_name
+    u.name as requester_name,
+    inc.title as incident_title
   FROM "REQUESTS" r
   LEFT JOIN "USERS" u ON r.requester_id = u.user_id
+  LEFT JOIN "INCIDENTS" inc ON r.incident_id = inc.incident_id
 `;
 
 /**
@@ -67,12 +69,9 @@ export const createRequest = async (data) => {
     } else if (headcount) {
       requiredQty = headcount;
     } else if (skills && skills.length > 0) {
-      // If skills is array of IDs, we assume qty 1 per skill? Or skills object has qty?
-      // Frontend sends array of IDs usually. Let's assume 1 per skill if simple array.
-      // But parseNeed expects { quantity }.
-      // Let's assume input 'skills' is array of { skill_tag_id, qty } or just IDs.
-      // For now, use headcount if available, else 0.
-      requiredQty = headcount || 0;
+      requiredQty = skills.reduce((acc, skill) => acc + (typeof skill === 'object' ? (skill.qty || 1) : 1), 0);
+    } else if (equipments && equipments.length > 0) {
+      requiredQty = equipments.reduce((acc, equip) => acc + (equip.qty || 0), 0);
     }
 
     // 1. Insert into base REQUESTS table
@@ -225,7 +224,6 @@ export const getRequestById = async (data) => {
   try {
     const sql = `${BASE_QUERY} WHERE r.request_id = $1`;
     const { rows } = await pool.query(sql, [request_id]);
-    
     return rows[0];
 
   } catch (error) {

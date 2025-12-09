@@ -161,3 +161,23 @@ export const getAllShelters = async (params = {}) => {
     throw error;
   }
 };
+
+/**
+ * Search Nearby Shelters
+ */
+export const getNearbyShelters = async (latitude, longitude, limit = 10) => {
+    try {
+        const sql = `
+            SELECT *,
+            (6371 * acos(cos(radians($1)) * cos(radians(latitude)) * cos(radians(longitude) - radians($2)) + sin(radians($1)) * sin(radians(latitude)))) AS distance
+            FROM "SHELTERS"
+            ORDER BY distance ASC
+            LIMIT $3;
+        `;
+        const { rows } = await pool.query(sql, [latitude, longitude, limit]);
+        return rows;
+    } catch (error) {
+        console.error('Error getting nearby shelters:', error);
+        throw error;
+    }
+};

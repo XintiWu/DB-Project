@@ -131,11 +131,13 @@ export const getIdleResources = async (days = 30) => {
 export const getVolunteerLeaderboard = async (limit = 10) => {
     try {
         const sql = `
-            SELECT u.name, COUNT(ra.request_id) as help_count
+            SELECT u.user_id, u.name, u.email,
+                   COUNT(ra.request_id) as help_count,
+                   SUM(ra.qty) as total_qty
             FROM "REQUEST_ACCEPTS" ra
             JOIN "USERS" u ON ra.accepter_id = u.user_id
-            GROUP BY u.name
-            ORDER BY help_count DESC
+            GROUP BY u.user_id, u.name, u.email
+            ORDER BY help_count DESC, total_qty DESC
             LIMIT $1;
         `;
         const { rows } = await pool.query(sql, [limit]);
