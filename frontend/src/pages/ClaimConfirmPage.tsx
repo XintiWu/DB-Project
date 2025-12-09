@@ -83,15 +83,31 @@ export function ClaimConfirmPage() {
         items: items
       }
 
-      await submitClaim(claimData)
+      console.log('提交認領數據:', JSON.stringify(claimData, null, 2))
+      
+      const result = await submitClaim(claimData)
+      
+      console.log('認領響應:', result)
+
+      // 檢查響應是否成功
+      if (result && result.success === false) {
+        const errorMsg = result.errors?.map((e: any) => e.error).join(', ') || '認領失敗'
+        throw new Error(errorMsg)
+      }
 
       clearClaimList()
       // Pass minimal info for success page if needed, or just status
       navigate('/claim/success', { state: { claimRecord: { ...claimData, id: 'PENDING', claimerName: user.name } } })
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Claim failed:', err)
-      alert('認領失敗，請稍後再試')
+      console.error('Error details:', {
+        message: err?.message,
+        error: err?.error,
+        stack: err?.stack
+      })
+      const errorMessage = err?.message || err?.error || '認領失敗，請稍後再試'
+      alert(`認領失敗：${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }

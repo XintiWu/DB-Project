@@ -11,14 +11,30 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || error.error || "API request failed");
+    const errorMessage = error.error || error.message || `HTTP ${response.status}: ${response.statusText}`;
+    console.error('API Error:', {
+      endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      error
+    });
+    throw new Error(errorMessage);
   }
 
   return response.json();
 }
 
-export function getAllRequests() {
-  return request<any[]>("/requests");
+export function getAllRequests(options: { page?: number; limit?: number; type?: string; keyword?: string; incident_id?: string } = {}) {
+  const { page, limit, type, keyword, incident_id } = options;
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (type) params.append('type', type);
+  if (keyword) params.append('keyword', keyword);
+  if (incident_id) params.append('incident_id', incident_id);
+  
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
 export function submitClaim(data: any) {
@@ -35,8 +51,12 @@ export function createRequest(data: any) {
   });
 }
 
-export function getAllIncidents() {
-  return request<any[]>("/incidents");
+export function getAllIncidents(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "";
+  if (page) query += `?page=${page}`;
+  if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/incidents${query}`);
 }
 
 export function createIncident(data: any) {
@@ -46,12 +66,23 @@ export function createIncident(data: any) {
   });
 }
 
-export function getAllShelters() {
-  return request<any[]>("/shelters");
+export function getAllShelters(options: { page?: number; limit?: number; keyword?: string } = {}) {
+  const { page, limit, keyword } = options;
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (keyword) params.append('keyword', keyword);
+  
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<{ data: any[]; meta: any } | any[]>(`/shelters${query}`);
 }
 
-export function getAllInventories() {
-  return request<any[]>("/inventories");
+export function getAllInventories(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "";
+  if (page) query += `?page=${page}`;
+  if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/inventories${query}`);
 }
 
 export function getAllFinancials() {
@@ -111,8 +142,12 @@ export async function getRequestsByIncidentId(incidentId: string) {
 
 
 
-export function getUnverifiedRequests() {
-  return request<any[]>("/requests?unverified=true");
+export function getUnverifiedRequests(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "?unverified=true";
+  if (page) query += `&page=${page}`;
+  if (limit) query += `&limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
 export function reviewRequest(requestId: string, data: any) {

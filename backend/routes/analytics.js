@@ -24,6 +24,36 @@ router.post('/clicks', async (req, res) => {
   }
 });
 
+// 記錄搜尋日誌
+router.post('/log-search', async (req, res) => {
+  try {
+    const searchData = {
+      userId: req.body.userId || 'anonymous',
+      query: req.body.query,
+      category: req.body.category || 'all',
+      resultCount: req.body.resultCount || 0,
+      metadata: req.body.metadata || {},
+      userAgent: req.headers['user-agent'],
+      ip: req.ip || req.connection.remoteAddress,
+    };
+    
+    const result = await analyticsService.logSearch(searchData);
+    res.status(201).json({ success: true, id: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 獲取系統統計
+router.get('/stats', async (req, res) => {
+    try {
+        const stats = await analyticsService.getSystemStats();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // 獲取頁面統計
 router.get('/pages', async (req, res) => {
   try {

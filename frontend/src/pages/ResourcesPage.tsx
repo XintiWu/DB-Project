@@ -15,6 +15,10 @@ export function ResourcesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
   // Modal state
   const [selectedInventory, setSelectedInventory] = useState<Inventory | null>(null)
   const [inventoryItems, setInventoryItems] = useState<any[]>([])
@@ -24,15 +28,25 @@ export function ResourcesPage() {
   const { user } = useAuth()
   const [myInventoryIds, setMyInventoryIds] = useState<Set<number>>(new Set())
 
+  // Fetch Items once
   useEffect(() => {
-    async function fetchData() {
+     getAllItems().then(data => setItems(data)).catch(console.error)
+  }, [])
+
+  // Fetch Inventories on page change
+  useEffect(() => {
+    async function fetchInventories() {
+      setLoading(true)
       try {
-        const [invData, itemData] = await Promise.all([
-          getAllInventories(),
-          getAllItems()
-        ])
-        setInventories(invData)
-        setItems(itemData)
+        const response: any = await getAllInventories({ page, limit: 12 })
+        let data = []
+        if (response.data) {
+            data = response.data
+            setTotalPages(response.meta.totalPages)
+        } else if (Array.isArray(response)) {
+            data = response
+        }
+        setInventories(data)
       } catch (err) {
         console.error('Failed to fetch resources:', err)
         setError('無法載入資源資料')
@@ -40,8 +54,8 @@ export function ResourcesPage() {
         setLoading(false)
       }
     }
-    fetchData()
-  }, [])
+    fetchInventories()
+  }, [page])
 
   useEffect(() => {
       if (user) {
@@ -77,9 +91,8 @@ export function ResourcesPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12">載入中...</div>
-  if (error) return <div className="text-center py-12 text-red-600">{error}</div>
-
+  if (loading && page === 1 && inventories.length === 0) return <div className="text-center py-12">載入中...</div>
+  
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
 
   return (
@@ -98,7 +111,7 @@ export function ResourcesPage() {
           <Warehouse className="h-5 w-5" />
           倉庫據點
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {inventories.length === 0 ? (
              <div className="col-span-full text-center py-12 text-slate-500 bg-slate-50 rounded-xl border border-dashed">
                 <Warehouse className="h-10 w-10 mx-auto mb-3 opacity-20" />
@@ -141,6 +154,27 @@ export function ResourcesPage() {
               </motion.div>
             </motion.div>
           )))}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-center items-center gap-4 mt-8">
+            <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            上一頁
+            </button>
+            <span className="text-sm font-medium text-slate-600">
+                第 {page} 頁 / 共 {totalPages} 頁
+            </span>
+            <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            下一頁
+            </button>
         </div>
       </section>
 

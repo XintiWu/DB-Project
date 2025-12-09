@@ -180,11 +180,30 @@ export const searchIncidentsByReporterId = async (data) => {
 /**
  * Get All Incidents
  */
-export const getAllIncidents = async () => {
+export const getAllIncidents = async (pagination = {}) => {
+  const { page = 1, limit = 10 } = pagination;
+  const offset = (page - 1) * limit;
+
   try {
-    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" ORDER BY reported_at DESC';
-    const { rows } = await pool.query(sql);
-    return rows;
+    // 1. Get total count
+    const countSql = 'SELECT COUNT(*) FROM "INCIDENTS"';
+    const countResult = await pool.query(countSql);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get paginated data
+    const sql = 'SELECT *, reported_at as created_at FROM "INCIDENTS" ORDER BY reported_at DESC LIMIT $1 OFFSET $2';
+    const { rows } = await pool.query(sql, [limit, offset]);
+    
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
   } catch (error) {
     console.error('Error getting all incidents:', error);
     throw error;

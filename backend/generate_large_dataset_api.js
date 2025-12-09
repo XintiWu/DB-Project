@@ -87,9 +87,11 @@ async function generateLargeDataset() {
     // 1. 獲取基礎資料
     console.log('📋 獲取基礎資料...');
     const users = await apiRequest('/users');
-    const incidents = await apiRequest('/incidents');
+    const incidentsRes = await apiRequest('/incidents?limit=100');
     const items = await apiRequest('/items');
     const skills = await apiRequest('/skill-tags');
+
+    const incidents = incidentsRes.data || incidentsRes;
     
     if (!users || users.length === 0) {
       throw new Error('沒有找到用戶，請先創建用戶');
@@ -117,12 +119,12 @@ async function generateLargeDataset() {
     // 2. 生成 INVENTORIES
     console.log(`📦 正在生成 ${NUM_INVENTORIES} 個倉庫...`);
     const generatedInventoryIds = [];
-    const batchSize = 100; // 批次大小，避免過載
     
     for (let i = 0; i < NUM_INVENTORIES; i++) {
       try {
         const address = getRandomElement(ADDRESSES);
         const ownerId = getRandomElement(userIds);
+        const status = getRandomElement(['Public', 'Private', 'Inactive']);
         
         const result = await apiRequest('/inventories', 'POST', {
           address,
@@ -137,7 +139,7 @@ async function generateLargeDataset() {
         for (let k = 0; k < numItems; k++) {
           const itemId = getRandomElement(itemIds);
           const qty = getRandomInt(1, 100);
-          const status = getRandomElement(['Available', 'Lent', 'Unavailable']);
+          const status = getRandomElement(['Owned', 'Lent', 'Unavailable']);
           
           try {
             await apiRequest('/inventory-items', 'POST', {
@@ -220,11 +222,16 @@ async function generateLargeDataset() {
 
     // 4. 統計資訊
     console.log('📊 資料生成統計：');
-    const invCount = await apiRequest('/inventories');
-    const reqCount = await apiRequest('/requests');
+    const invRes = await apiRequest('/inventories');
+    const invCount = invRes.meta ? invRes.meta.totalItems : (Array.isArray(invRes) ? invRes.length : 'N/A');
     
-    console.log(`  📦 倉庫 (INVENTORIES): ${Array.isArray(invCount) ? invCount.length : 'N/A'} 筆`);
-    console.log(`  📋 需求 (REQUESTS): ${Array.isArray(reqCount) ? reqCount.length : 'N/A'} 筆`);
+    const reqRes = await apiRequest('/requests');
+    // Requests might be paginated too? users script didn't fetch it before.
+    // Let's check if requests is paginated. Yes it is.
+    const reqCount = reqRes.meta ? reqRes.meta.totalItems : (Array.isArray(reqRes) ? reqRes.length : 'N/A');
+    
+    console.log(`  📦 倉庫 (INVENTORIES): ${invCount} 筆`);
+    console.log(`  📋 需求 (REQUESTS): ${reqCount} 筆`);
     console.log('\n🎉 大規模資料生成完成！');
     
   } catch (error) {
