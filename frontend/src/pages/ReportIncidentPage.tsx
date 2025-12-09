@@ -41,7 +41,7 @@ export function ReportIncidentPage() {
       await createIncident({
         ...formData,
         reporter_id: user.user_id,
-        status: 'Active',
+        status: 'Occurring', // 必須是 'Occurring' 或 'Solved'
         latitude: null, // Optional
         longitude: null // Optional
       })
