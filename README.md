@@ -12,16 +12,25 @@
 
 ---
 
-## 🚀 快速開始 (Quick Start)
+## 🚀 快速開始
 
 ### 環境需求
 
-- **Node.js**: v18 或以上
+- **Node.js (with npm)**: v18 或以上
 - **PostgreSQL**: v14 或以上
+- **MongoDB**: v6.0 或以上 (僅限 Mac，Windows請手動安裝)
 
 ### ⚡ 一鍵啟動 (Mac/Linux)
 
-專案根目錄附帶了啟動腳本，可同時啟動前後端：
+專案根目錄已設定 `concurrently`，可使用 npm 指令同時啟動前後端。系統會自動檢查並透過Homebrew安裝 MongoDB (僅限 Mac，Windows請手動安裝)：
+
+```bash
+npm install # 首次執行需安裝依賴
+npm run install:all # 一鍵安裝所有依賴 (Root, Backend, Frontend)
+npm start
+```
+
+或者使用提供的 Shell 腳本 (Mac/Linux)：
 
 ```bash
 ./start_system.sh
@@ -96,20 +105,6 @@
 
 ---
 
-## 📖 使用說明
-
-### 🦸‍♂️ 志工模式（提供協助）
-
-- **瀏覽需求**：查看所有救災需求，可依類別、地區、緊急程度篩選。
-- **認領需求**：將需求加入認領清單，填寫提供數量與時間。
-
-### 🆘 災民模式（發布需求）
-
-- **發布需求**：填寫物資或救援需求，包含地點、數量、緊急程度等。
-- **管理金鑰**：發布後會獲得一組金鑰，用於後續修改或關閉需求。
-
----
-
 ## 👥 協作指南
 
 ### 下載專案
@@ -135,4 +130,3 @@ cd DB-Project
 - **Backend**: Node.js, Express
 - **Database**: PostgreSQL
 - **API**: RESTful API (`/api/...`)
-
