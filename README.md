@@ -24,12 +24,13 @@
 
 1. **PostgreSQL**
 
-   請在你的PostgreSQL中建立資料庫，使用release的.backup file還原資料庫，並到`\backend\.env`修改你的資料庫連線設定
+   請在你的 PostgreSQL 中建立資料庫，使用 release 的.backup file 還原資料庫。
 
+   複製專案根目錄的 `.env.example` 為 `.env`，並填入你的資料庫連線資訊 (DB_USER, DB_PASSWORD 等)。
 
 ### ⚡ 一鍵啟動 (Mac/Linux)
 
-專案根目錄已設定 `concurrently`，可使用 npm 指令同時啟動前後端。系統會自動檢查並透過Homebrew安裝 MongoDB (僅限 Mac，Windows請手動安裝)：
+專案根目錄已設定 `concurrently`，可使用 npm 指令同時啟動前後端。
 
 ```bash
 npm install # 首次執行需安裝依賴
@@ -41,6 +42,12 @@ npm start
 
 ```bash
 ./start_system.sh
+```
+
+(Windows)：
+
+```bash
+./start_system.bat
 ```
 
 ---
@@ -58,6 +65,8 @@ npm start
    ```sql
    CREATE DATABASE disaster_platform;
    ```
+
+````
 
 2. **匯入資料表結構**：
    ```bash
@@ -137,3 +146,4 @@ cd DB-Project
 - **Backend**: Node.js, Express
 - **Database**: PostgreSQL
 - **API**: RESTful API (`/api/...`)
+````

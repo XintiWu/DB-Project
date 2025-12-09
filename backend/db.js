@@ -2,7 +2,16 @@
 import pkg from 'pg';
 import dotenv from 'dotenv';
 
-dotenv.config(); // 載入 .env 檔案
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load .env from backend folder (default)
+dotenv.config();
+// Load .env from root folder
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const { Pool } = pkg;
 
