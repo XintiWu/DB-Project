@@ -1,4 +1,4 @@
-import { MapPin, Clock } from 'lucide-react'
+import { MapPin, Clock, ShieldCheck } from 'lucide-react'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { Card, CardContent, CardFooter, CardHeader } from './ui/card'
@@ -48,9 +48,17 @@ export function NeedCard({ need, onClick, layoutId, isSelected }: NeedCardProps)
                 </div>
               </div>
             </div>
-            <Badge variant="outline" className={severity.bgColor + ' ' + severity.color + ' border-0'}>
-              {severity.name}
-            </Badge>
+            <div className="flex flex-col items-end gap-1">
+              <Badge variant="outline" className={severity.bgColor + ' ' + severity.color + ' border-0'}>
+                {severity.name}
+              </Badge>
+              {need.review_status === 'Approved' && (
+                <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 gap-1 pl-1 pr-2">
+                  <ShieldCheck className="h-3 w-3" />
+                  已審核
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
 

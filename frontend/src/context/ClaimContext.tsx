@@ -54,6 +54,7 @@ export function ClaimProvider({ children }: { children: React.ReactNode }) {
         quantity,
         unit: need.unit,
         note: '',
+        incidentId: need.incidentId,
         ...additionalInfo
       }
       setClaimItems([...claimItems, newItem])

@@ -3,23 +3,20 @@ import * as service from "../services/inventory_items.js";
 
 const router = express.Router();
 
-// Get items (filter by inventory_id or category_id)
-router.get("/", async (req, res) => {
+// Get items by inventory_id (supports category_id and status via query)
+router.get("/:inventory_id", async (req, res) => {
   try {
-    if (req.query.inventory_id && req.query.category_id) {
-        const result = await service.searchInventoryItemsByCategory({ 
-            inventory_id: req.query.inventory_id,
-            category_id: req.query.category_id 
-        });
-        return res.json(result);
+    if (req.query.category_id) {
+       const result = await service.searchInventoryItemsByCategory({
+           inventory_id: req.params.inventory_id,
+           category_id: req.query.category_id
+       });
+       res.json(result);
+    } else {
+       const status = req.query.status;
+       const result = await service.getInventoryItemsByInventoryId(req.params.inventory_id, status);
+       res.json(result);
     }
-    
-    if (req.query.inventory_id) {
-        const result = await service.getInventoryItemsByInventoryId(req.query.inventory_id);
-        return res.json(result);
-    }
-
-    res.status(501).json({ error: "Please provide inventory_id" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -53,10 +50,11 @@ router.put("/:inventory_id/:item_id", async (req, res) => {
 // Delete item from inventory (Composite key)
 router.delete("/:inventory_id/:item_id", async (req, res) => {
   try {
-    const result = await service.deleteInventoryItem({ 
-        inventory_id: req.params.inventory_id,
-        item_id: req.params.item_id
-    });
+    const result = await service.deleteInventoryItem(
+        req.params.inventory_id,
+        req.params.item_id,
+        req.query.status || 'Owned'
+    );
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

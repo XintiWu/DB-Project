@@ -1,4 +1,5 @@
 import { pool } from '../db.js';
+import { logError } from '../utils/logger.js';
 
 /**
  * Create Inventory
@@ -20,36 +21,21 @@ export const createInventory = async (data) => {
 
     // 1. CREATE INVENTORY
     const insertInventorySql = `
-      INSERT INTO "INVENTORIES" (location)
-      VALUES ($1)
+      INSERT INTO "INVENTORIES" (address, name, status)
+      VALUES ($1, $2, 'Private')
       RETURNING inventory_id;
     `;
-    const inventoryResult = await client.query(insertInventorySql, [address]); //DB assigns new inventory id
+    const inventoryResult = await client.query(insertInventorySql, [address, data.name || 'New Warehouse']); //DB assigns new inventory id
     const newInventory = inventoryResult.rows[0];
     const newInventoryId = newInventory.inventory_id;
 
     // 2. CREATE OWNER RELATION
-    // Assuming INVENTORIES has owner_id directly based on my schema assumption, 
-    // but code suggests INVENTORY_OWNERS table. I will stick to code logic but update to use client.
-    // Wait, if I look at my schema I put owner_id in INVENTORIES. 
-    // But the code tries to insert into INVENTORY_OWNERS.
-    // I should probably support both or stick to what the code implies the DB has.
-    // Since user said DB is built, I should trust the code's assumption about tables?
-    // But the code was using `db.query` which implies no transaction support in original code.
-    // I will use transaction here.
-    
     if (owner_id) {
-        // Also update the owner_id in INVENTORIES if column exists, but let's stick to INVENTORY_OWNERS for now as per code
-        // Actually, let's update INVENTORIES owner_id too if it exists, but I can't be sure.
-        // Let's just follow the code's logic: insert into INVENTORY_OWNERS
       const insertOwnerSql = `
-        INSERT INTO "INVENTORY_OWNERS" (inventory_id, owner_id)
+        INSERT INTO "INVENTORY_OWNERS" (inventory_id, user_id)
         VALUES ($1, $2);
       `;
       await client.query(insertOwnerSql, [newInventoryId, owner_id]);
-      
-      // Also update the main table if it has the column (based on my schema plan, it did)
-      // But safe to skip if we trust INVENTORY_OWNERS is the way.
     }
 
     await client.query('COMMIT');
@@ -57,7 +43,7 @@ export const createInventory = async (data) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Error creating inventory:', error);
+    logError('[Service] createInventory', error);
     throw error;
   } finally {
     client.release();
@@ -68,42 +54,18 @@ export const createInventory = async (data) => {
 Update Inventory Info
  */
 export const updateInventoryInfo = async (data) => {
-  const { inventory_id, address, status } = data;
+  const { inventory_id, address, status, name } = data;
 
   try {
     const sql = `
       UPDATE "INVENTORIES"
-      SET location = $2
-      WHERE inventory_id = $1
-      RETURNING *;
-    `;
-    // Note: 'status' was in input but not in update query in original code? 
-    // Original code: SET address = $2, status = $3. 
-    // But my schema used 'location'. 
-    // Let's assume 'location' is the column name for address based on standard naming, 
-    // but the original code used 'address'. 
-    // WAIT. The original code used `SET address = $2`. 
-    // I should probably stick to `address` if the DB was built with `address`.
-    // But I don't know the DB schema for sure. 
-    // However, `incidents.js` used `address`. `requests.js` used `address`.
-    // `inventories.js` used `address` in `createInventory` param but `location` in my schema.
-    // I should stick to what the code says: `address`.
-    
-    // Re-reading original code:
-    // INSERT INTO "INVENTORIES" (address) ...
-    // UPDATE "INVENTORIES" SET address = $2, status = $3 ...
-    
-    // So I will use `address` and `status`.
-    
-    const sqlOriginal = `
-      UPDATE "INVENTORIES"
-      SET address = $2, status = $3
+      SET address = $2, status = $3, name = $4
       WHERE inventory_id = $1
       RETURNING *;
     `;
     
-    const values = [inventory_id, address, status]; // Fixed variable name from newInventoryId to inventory_id
-    const { rows } = await pool.query(sqlOriginal, values);
+    const values = [inventory_id, address, status, name];
+    const { rows } = await pool.query(sql, values);
     
     return rows[0]; // 回傳更新後的資料
 
@@ -140,7 +102,7 @@ export const searchInventoryByInventoryId = async (data) => {
 
   try {
     const sql = `
-      SELECT i.*, io.owner_id 
+      SELECT i.*, io.user_id 
       FROM "INVENTORIES" i
         LEFT JOIN "INVENTORY_OWNERS" io ON i.inventory_id = io.inventory_id
       WHERE i.inventory_id = $1;
@@ -156,13 +118,124 @@ export const searchInventoryByInventoryId = async (data) => {
 };
 
 /**
+ * Transfer inventory item from one warehouse to another (Donation/Transfer)
+ */
+export const transferInventory = async (data) => {
+  const { from_inventory_id, to_inventory_id, item_id, qty } = data;
+
+  if (from_inventory_id == to_inventory_id) {
+    throw new Error('來源與目的倉庫不能相同');
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const checkSourceSql = `
+      SELECT qty FROM "INVENTORY_ITEMS"
+      WHERE inventory_id = $1 AND item_id = $2
+      FOR UPDATE;
+    `;
+    const sourceRes = await client.query(checkSourceSql, [from_inventory_id, item_id]);
+
+    if (sourceRes.rows.length === 0 || sourceRes.rows[0].qty < qty) {
+      throw new Error(`來源倉庫庫存不足 (目前: ${sourceRes.rows.length > 0 ? sourceRes.rows[0].qty : 0})`);
+    }
+
+    // 1.5 Check Target Inventory Exists
+    const checkTargetInvSql = 'SELECT inventory_id FROM "INVENTORIES" WHERE inventory_id = $1';
+    const targetInvRes = await client.query(checkTargetInvSql, [to_inventory_id]);
+    if (targetInvRes.rows.length === 0) {
+        throw new Error(`目標倉庫 ID (${to_inventory_id}) 不存在`);
+    }
+
+    // 2. Deduct from Source
+    const deductSql = `
+      UPDATE "INVENTORY_ITEMS"
+      SET qty = qty - $1, updated_at = NOW()
+      WHERE inventory_id = $2 AND item_id = $3;
+    `;
+    await client.query(deductSql, [qty, from_inventory_id, item_id]);
+
+    // 3. Add to Target (UPSERT)
+    // Check if item exists in target
+    const checkTargetSql = `
+      SELECT qty FROM "INVENTORY_ITEMS"
+      WHERE inventory_id = $1 AND item_id = $2;
+    `;
+    const targetRes = await client.query(checkTargetSql, [to_inventory_id, item_id]);
+
+    if (targetRes.rows.length > 0) {
+      const updateTargetSql = `
+        UPDATE "INVENTORY_ITEMS"
+        SET qty = qty + $1, updated_at = NOW()
+        WHERE inventory_id = $2 AND item_id = $3;
+      `;
+      await client.query(updateTargetSql, [qty, to_inventory_id, item_id]);
+    } else {
+      const insertTargetSql = `
+        INSERT INTO "INVENTORY_ITEMS" (inventory_id, item_id, qty, updated_at, status)
+        VALUES ($1, $2, $3, NOW(), 'Owned');
+      `;
+      await client.query(insertTargetSql, [to_inventory_id, item_id, qty]);
+    }
+
+    await client.query('COMMIT');
+    return { success: true, message: `Successfully transferred ${qty} of item ${item_id} from ${from_inventory_id} to ${to_inventory_id}` };
+
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error transferring inventory:', error);
+    logError('[Service] transferInventory', error); // Ensure it goes to file
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * Get All Inventories
  */
-export const getAllInventories = async () => {
+export const getAllInventories = async (pagination = {}) => {
+  const { page = 1, limit = 10 } = pagination;
+  const offset = (page - 1) * limit;
+
   try {
-    const sql = 'SELECT * FROM "INVENTORIES" ORDER BY inventory_id ASC';
-    const { rows } = await pool.query(sql);
-    return rows;
+    // 1. Get total count
+    const countSql = 'SELECT COUNT(*) FROM "INVENTORIES" WHERE status = \'Public\'';
+    const countResult = await pool.query(countSql);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get paginated data
+    // debug log
+    console.log(`Fetching inventories page ${page}, limit ${limit}`);
+    
+    const sql = `
+      SELECT i.*, CAST(COALESCE(SUM(ii.qty), 0) AS INTEGER) as total_qty
+      FROM "INVENTORIES" i
+      LEFT JOIN "INVENTORY_ITEMS" ii ON i.inventory_id = ii.inventory_id AND ii.status = 'Owned'
+      WHERE i.status = 'Public'
+      GROUP BY i.inventory_id
+      ORDER BY total_qty DESC, i.inventory_id ASC
+      LIMIT $1 OFFSET $2
+    `;
+    const { rows } = await pool.query(sql, [limit, offset]);
+    if (rows.length > 0) {
+        console.log('First inventory total_qty:', rows[0].total_qty);
+        console.log('Last inventory total_qty:', rows[rows.length-1].total_qty);
+    }
+    
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
   } catch (error) {
     console.error('Error getting all inventories:', error);
     throw error;

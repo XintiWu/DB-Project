@@ -8,7 +8,7 @@ export const addInventoryOwner = async (data) => {
 
   try {
     const sql = `
-      INSERT INTO "INVENTORY_OWNERS" (inventory_id, owner_id)
+      INSERT INTO "INVENTORY_OWNERS" (inventory_id, user_id)
       VALUES ($1, $2)
       RETURNING *;
     `;
@@ -33,7 +33,7 @@ export const removeInventoryOwner = async (data) => {
   try {
     const sql = `
       DELETE FROM "INVENTORY_OWNERS" 
-      WHERE inventory_id = $1 AND owner_id = $2
+      WHERE inventory_id = $1 AND user_id = $2
       RETURNING *;
     `;
     const { rows } = await pool.query(sql, [inventory_id, user_id]);
@@ -55,8 +55,8 @@ export const getOwnersByInventoryId = async (data) => {
     const sql = `
       SELECT io.*, u.name, u.email, u.phone
       FROM "INVENTORY_OWNERS" io
-      JOIN "USERS" u ON io.owner_id = u.user_id
-      WHERE io.inventory_id = $1
+      JOIN "USERS" u ON io.user_id = u.user_id
+        WHERE io.inventory_id = $1
     `;
     const { rows } = await pool.query(sql, [inventory_id]);
     return rows;
@@ -75,10 +75,11 @@ export const getInventoriesByUserId = async (data) => {
 
   try {
     const sql = `
-      SELECT io.*, i.location, i.updated_at
+      SELECT io.*, i.address, i.name, i.updated_at,
+      (SELECT COUNT(*) FROM "INVENTORY_ITEMS" ii WHERE ii.inventory_id = i.inventory_id)::int as item_count
       FROM "INVENTORY_OWNERS" io
       JOIN "INVENTORIES" i ON io.inventory_id = i.inventory_id
-      WHERE io.owner_id = $1
+      WHERE io.user_id = $1
     `;
     const { rows } = await pool.query(sql, [user_id]);
     return rows;

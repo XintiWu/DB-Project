@@ -24,12 +24,21 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
   return response.json();
 }
 
-export function getAllRequests() {
-  return request<any[]>("/requests");
+export function getAllRequests(options: { page?: number; limit?: number; type?: string; keyword?: string; incident_id?: string } = {}) {
+  const { page, limit, type, keyword, incident_id } = options;
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (type) params.append('type', type);
+  if (keyword) params.append('keyword', keyword);
+  if (incident_id) params.append('incident_id', incident_id);
+  
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
 export function submitClaim(data: any) {
-  return request<any>("/request-accepters/bulk", {
+  return request<any>("/request-accepts/bulk", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -42,8 +51,12 @@ export function createRequest(data: any) {
   });
 }
 
-export function getAllIncidents() {
-  return request<any[]>("/incidents");
+export function getAllIncidents(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "";
+  if (page) query += `?page=${page}`;
+  if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/incidents${query}`);
 }
 
 export function createIncident(data: any) {
@@ -53,12 +66,23 @@ export function createIncident(data: any) {
   });
 }
 
-export function getAllShelters() {
-  return request<any[]>("/shelters");
+export function getAllShelters(options: { page?: number; limit?: number; keyword?: string } = {}) {
+  const { page, limit, keyword } = options;
+  const params = new URLSearchParams();
+  if (page) params.append('page', page.toString());
+  if (limit) params.append('limit', limit.toString());
+  if (keyword) params.append('keyword', keyword);
+  
+  const query = params.toString() ? `?${params.toString()}` : '';
+  return request<{ data: any[]; meta: any } | any[]>(`/shelters${query}`);
 }
 
-export function getAllInventories() {
-  return request<any[]>("/inventories");
+export function getAllInventories(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "";
+  if (page) query += `?page=${page}`;
+  if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/inventories${query}`);
 }
 
 export function getAllFinancials() {
@@ -116,14 +140,14 @@ export async function getRequestsByIncidentId(incidentId: string) {
   return res.json()
 }
 
-export async function getInventoryItems(inventoryId: string) {
-  const res = await fetch(`${API_BASE_URL}/inventory-items?inventory_id=${inventoryId}`)
-  if (!res.ok) throw new Error('Failed to fetch inventory items')
-  return res.json()
-}
 
-export function getUnverifiedRequests() {
-  return request<any[]>("/requests?unverified=true");
+
+export function getUnverifiedRequests(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "?unverified=true";
+  if (page) query += `&page=${page}`;
+  if (limit) query += `&limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
 export function reviewRequest(requestId: string, data: any) {
@@ -151,3 +175,122 @@ export function warnUser(data: any) {
   });
 }
 
+
+export function getInventoryById(inventoryId: string | number) {
+  return request<any>(`/inventories/${inventoryId}`);
+}
+
+export function getMyInventories(userId: string) {
+  return request<any[]>(`/inventory-owners?user_id=${userId}`);
+}
+
+export function getInventoryItems(inventoryId: string | number, status?: string) {
+  let url = `/inventory-items/${inventoryId}`;
+  if (status) {
+      url += `?status=${status}`;
+  }
+  return request<any>(url);
+}
+
+export function createInventory(data: any) {
+  return request<any>("/inventories", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateInventory(inventoryId: string | number, data: any) {
+  return request<any>(`/inventories/${inventoryId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteInventory(inventoryId: string | number) {
+  return request<any>(`/inventories/${inventoryId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Warehouse Team ---
+
+export function getInventoryOwners(inventoryId: string | number) {
+  return request<any[]>(`/inventory-owners?inventory_id=${inventoryId}`);
+}
+
+export function addInventoryOwner(data: any) {
+  return request<any>("/inventory-owners", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function removeInventoryOwner(inventoryId: string | number, userId: string | number) {
+  return request<any>(`/inventory-owners/${inventoryId}/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+// --- Warehouse Items ---
+
+export function addInventoryItem(data: any) {
+  return request<any>("/inventory-items", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateInventoryItem(inventoryId: string | number, itemId: string | number, data: any) {
+  return request<any>(`/inventory-items/${inventoryId}/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteInventoryItem(inventoryId: string | number, itemId: string | number, status: string = 'Owned') {
+  return request<any>(`/inventory-items/${inventoryId}/${itemId}?status=${status}`, {
+    method: "DELETE",
+  });
+}
+// --- Lends & Provides ---
+
+export function createLend(data: any) {
+  return request<any>("/lends", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function createProvide(data: any) {
+  return request<any>("/provides", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function transferInventory(data: any) {
+  return request<any>("/inventories/transfer", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function getWarehouseLends(inventoryId: string | number) {
+  return request<any[]>(`/lends/inventory/${inventoryId}`);
+}
+
+export function approveLend(lendId: string | number) {
+  return request<any>(`/lends/${lendId}/approve`, {
+    method: "PUT"
+  });
+}
+
+export function rejectLend(lendId: string | number) {
+  return request<any>(`/lends/${lendId}/reject`, {
+    method: "PUT"
+  });
+}
+
+export function getUserLends(userId: string | number) {
+  return request<any[]>(`/lends/user/${userId}`);
+}

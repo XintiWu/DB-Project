@@ -9,7 +9,10 @@ router.get("/", async (req, res) => {
         const result = await service.searchSheltersByAreaId({ area_id: req.query.area_id });
         return res.json(result);
     }
-    const result = await service.getAllShelters();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const { keyword } = req.query;
+    const result = await service.getAllShelters({ page, limit, keyword });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

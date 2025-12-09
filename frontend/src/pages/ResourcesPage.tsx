@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { getAllInventories, getAllItems, getInventoryItems } from '../api/client'
+import { getAllInventories, getAllItems, getInventoryItems, getMyInventories } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 import type { Inventory, Item } from '../lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { MapPin, Package, Warehouse, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { BorrowDialog } from '../components/BorrowDialog'
 
 export function ResourcesPage() {
   const [inventories, setInventories] = useState<Inventory[]>([])
@@ -13,20 +15,38 @@ export function ResourcesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+
   // Modal state
   const [selectedInventory, setSelectedInventory] = useState<Inventory | null>(null)
   const [inventoryItems, setInventoryItems] = useState<any[]>([])
   const [loadingItems, setLoadingItems] = useState(false)
+  const [borrowItem, setBorrowItem] = useState<any>(null)
+  
+  const { user } = useAuth()
+  const [myInventoryIds, setMyInventoryIds] = useState<Set<number>>(new Set())
 
+  // Fetch Items once
   useEffect(() => {
-    async function fetchData() {
+     getAllItems().then(data => setItems(data)).catch(console.error)
+  }, [])
+
+  // Fetch Inventories on page change
+  useEffect(() => {
+    async function fetchInventories() {
+      setLoading(true)
       try {
-        const [invData, itemData] = await Promise.all([
-          getAllInventories(),
-          getAllItems()
-        ])
-        setInventories(invData)
-        setItems(itemData)
+        const response: any = await getAllInventories({ page, limit: 12 })
+        let data = []
+        if (response.data) {
+            data = response.data
+            setTotalPages(response.meta.totalPages)
+        } else if (Array.isArray(response)) {
+            data = response
+        }
+        setInventories(data)
       } catch (err) {
         console.error('Failed to fetch resources:', err)
         setError('無法載入資源資料')
@@ -34,8 +54,16 @@ export function ResourcesPage() {
         setLoading(false)
       }
     }
-    fetchData()
-  }, [])
+    fetchInventories()
+  }, [page])
+
+  useEffect(() => {
+      if (user) {
+          getMyInventories(user.user_id).then(invs => {
+              setMyInventoryIds(new Set(invs.map((i: any) => i.inventory_id)))
+          }).catch(console.error)
+      }
+  }, [user])
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -54,7 +82,7 @@ export function ResourcesPage() {
     setLoadingItems(true)
     setInventoryItems([]) // Clear previous items to ensure clean state
     try {
-      const items = await getInventoryItems(inv.inventory_id)
+      const items = await getInventoryItems(inv.inventory_id, 'Owned')
       setInventoryItems(items)
     } catch (err) {
       console.error('Failed to fetch inventory items:', err)
@@ -63,11 +91,13 @@ export function ResourcesPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12">載入中...</div>
+  if (loading && page === 1 && inventories.length === 0) return <div className="text-center py-12">載入中...</div>
+  
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
 
   return (
     <div className="space-y-8 relative">
+       {/* ... existing header ... */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">物資資源</h1>
         <p className="text-muted-foreground mt-2">
@@ -75,14 +105,21 @@ export function ResourcesPage() {
         </p>
       </div>
 
-      {/* Warehouses Section */}
+       {/* ... existing sections ... */}
       <section>
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <Warehouse className="h-5 w-5" />
           倉庫據點
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {inventories.map((inv) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {inventories.length === 0 ? (
+             <div className="col-span-full text-center py-12 text-slate-500 bg-slate-50 rounded-xl border border-dashed">
+                <Warehouse className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p className="text-lg font-medium text-slate-900">目前沒有公開的倉庫</p>
+                <p className="text-sm text-slate-500">所有的倉庫目前都處於私有或暫停狀態。</p>
+             </div>
+          ) : (
+             inventories.map((inv) => (
             <motion.div
               layoutId={`card-${inv.inventory_id}`}
               key={inv.inventory_id}
@@ -116,11 +153,32 @@ export function ResourcesPage() {
                 </Card>
               </motion.div>
             </motion.div>
-          ))}
+          )))}
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex justify-center items-center gap-4 mt-8">
+            <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            上一頁
+            </button>
+            <span className="text-sm font-medium text-slate-600">
+                第 {page} 頁 / 共 {totalPages} 頁
+            </span>
+            <button
+            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+            下一頁
+            </button>
         </div>
       </section>
 
-      {/* Items Section */}
+      {/* Items Section (Static List - Optional, skipping change here) */}
       <section>
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
           <Package className="h-5 w-5" />
@@ -221,7 +279,12 @@ export function ResourcesPage() {
                       <TabsContent value="all" className="mt-0">
                         <div className="grid gap-4">
                           {inventoryItems.map((item, idx) => (
-                            <InventoryItemCard key={idx} item={item} />
+                            <InventoryItemCard 
+                                key={idx} 
+                                item={item} 
+                                onBorrow={() => setBorrowItem(item)} 
+                                isOwner={selectedInventory && myInventoryIds.has(Number(selectedInventory.inventory_id))}
+                            />
                           ))}
                         </div>
                       </TabsContent>
@@ -230,7 +293,12 @@ export function ResourcesPage() {
                         <TabsContent key={cat} value={cat} className="mt-0">
                           <div className="grid gap-4">
                             {inventoryItems.filter(i => i.category_name === cat).map((item, idx) => (
-                              <InventoryItemCard key={idx} item={item} />
+                              <InventoryItemCard 
+                                key={idx} 
+                                item={item} 
+                                onBorrow={() => setBorrowItem(item)} 
+                                isOwner={selectedInventory && myInventoryIds.has(Number(selectedInventory.inventory_id))}
+                              />
                             ))}
                           </div>
                         </TabsContent>
@@ -257,11 +325,20 @@ export function ResourcesPage() {
           </div>
         )}
       </AnimatePresence>
+
+      <BorrowDialog 
+        isOpen={!!borrowItem}
+        onClose={() => setBorrowItem(null)}
+        onSuccess={() => selectedInventory && handleInventoryClick(selectedInventory)}
+        inventoryId={Number(selectedInventory?.inventory_id || 0)}
+        item={borrowItem}
+      />
     </div>
   )
 }
 
-function InventoryItemCard({ item }: { item: any }) {
+
+function InventoryItemCard({ item, onBorrow, isOwner }: { item: any, onBorrow?: () => void, isOwner?: boolean }) {
   return (
     <div className="flex items-center justify-between p-3 border border-white/20 rounded-lg hover:bg-white/50 bg-white/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -275,8 +352,25 @@ function InventoryItemCard({ item }: { item: any }) {
           </p>
         </div>
       </div>
-      <div className="text-sm text-slate-600">
-        {item.unit}
+      <div className="flex items-center gap-4">
+        <div className="text-sm text-slate-600">
+          {item.unit}
+        </div>
+        <button 
+            onClick={(e) => {
+                if (isOwner) return;
+                e.stopPropagation()
+                onBorrow?.()
+            }}
+            disabled={isOwner}
+            className={`text-xs px-3 py-1.5 rounded-full transition-colors ${
+                isOwner 
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+            }`}
+        >
+            {isOwner ? '持有' : '借用'}
+        </button>
       </div>
     </div>
   )

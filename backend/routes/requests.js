@@ -32,17 +32,22 @@ router.get("/", async (req, res) => {
             const result = await service.getRequestsByRequesterId({ requester_id: req.query.requester_id });
             return res.json(result);
         }
-        if (req.query.incident_id) {
-            const result = await service.getRequestsByIncidentId({ incident_id: req.query.incident_id });
-            return res.json(result);
-        }
+        // if (req.query.incident_id) {
+        //     const result = await service.getRequestsByIncidentId({ incident_id: req.query.incident_id });
+        //     return res.json(result);
+        // }
         if (req.query.unverified) {
-             const result = await service.getAllUnverifiedRequests();
+             const page = parseInt(req.query.page) || 1;
+             const limit = parseInt(req.query.limit) || 10;
+             const result = await service.getAllUnverifiedRequests({ page, limit });
              return res.json(result);
         }
         
-        // Default to all
-        const result = await service.getAllRequests();
+        // Default to all (supports incident_id)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const { type, keyword, incident_id } = req.query;
+        const result = await service.getAllRequests({ page, limit, type, keyword, incident_id });
         res.json(result);
     } catch (err) {
         res.status(500).json({ error: err.message });

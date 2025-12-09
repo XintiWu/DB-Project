@@ -1,19 +1,32 @@
 import express from "express";
-import * as service from "../services/request_accepters.js";
+import * as service from "../services/request_accepts.js";
+import { logError } from "../utils/logger.js";
 
 const router = express.Router();
+
+// ... (existing code)
+
+router.post("/bulk", async (req, res) => {
+  try {
+    const result = await service.createBulkRequestAccepts(req.body); // Renamed
+    res.status(201).json(result);
+  } catch (err) {
+    logError('[Route] POST /request-accepts/bulk', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.get("/", async (req, res) => {
   try {
     if (req.query.request_id) {
-        const result = await service.getAcceptersByRequestId({ request_id: req.query.request_id });
+        const result = await service.getAcceptsByRequestId({ request_id: req.query.request_id }); // Renamed
         return res.json(result);
     }
     if (req.query.accepter_id) {
-        const result = await service.getAcceptedRequestsByUserId({ accepter_id: req.query.accepter_id });
+        const result = await service.getAcceptedRequestsByAccepterId({ accepter_id: req.query.accepter_id }); // Renamed
         return res.json(result);
     }
-    const result = await service.getAllRequestAccepters();
+    const result = await service.getAllRequestAccepts(); // Renamed
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -43,19 +56,21 @@ router.post("/bulk", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const result = await service.createRequestAccepter(req.body);
+    const result = await service.createRequestAccept(req.body); // Renamed (already was Accepts but verify)
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+
+
 // Delete (Cancel acceptance) - Composite key or use query params?
 // Service expects { request_id, accepter_id }
 // Let's use DELETE /:request_id/:accepter_id
 router.delete("/:request_id/:accepter_id", async (req, res) => {
   try {
-    const result = await service.deleteRequestAccepter({ 
+    const result = await service.deleteRequestAccept({ // Renamed
         request_id: req.params.request_id,
         accepter_id: req.params.accepter_id
     });

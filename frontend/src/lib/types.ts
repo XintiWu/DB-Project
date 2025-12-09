@@ -102,6 +102,7 @@ interface BaseNeed {
   createdAt: string           // 建立時間
   managementKey: string       // 管理金鑰
   incidentId?: string         // 關聯災情 ID
+  review_status?: string      // 審核狀態
 }
 
 /**
@@ -162,6 +163,7 @@ export interface ClaimItem {
   qualifications?: string
   
   note: string
+  incidentId?: string
 }
 
 /**

@@ -11,7 +11,7 @@ import { AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 
 export function RequestsPage() {
-  const { needs, loading, error, filters, setFilters } = useNeedData()
+  const { needs, loading, error, filters, setFilters, page, setPage, totalPages } = useNeedData(24)
   console.log('RequestsPage render:', { needs: needs.length, loading, error, filters })
   const [selectedNeed, setSelectedNeed] = useState<Need | null>(null)
   const location = useLocation()
@@ -43,22 +43,24 @@ export function RequestsPage() {
     }
   }, [selectedNeed])
   
-  // Filter logic
+  // Filter logic - Only Client Side Region Filter remains
+  // Type and Keyword are handled by Backend via useNeedData
   const filteredNeeds = needs.filter(need => {
-    // 1. Filter by Type (Tab)
-    if (filters.type !== 'all' && need.needType !== filters.type) return false
-    
-    // 2. Filter by Keyword
-    if (filters.keyword && !need.title.includes(filters.keyword) && !need.itemName.includes(filters.keyword)) return false
-    
-    // 3. Filter by Region
+    // Filter by Region (Client side for now)
     if (filters.region !== '全部' && need.region !== filters.region) return false
-    
-    // 4. Filter by Incident ID (if set)
-    if (filters.incidentId && (need as any).incidentId !== filters.incidentId) return false
-
     return true
   })
+
+  // Search Debounce
+  const [searchTerm, setSearchTerm] = useState(filters.keyword)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFilters(prev => ({ ...prev, keyword: searchTerm }))
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, setFilters])
 
   if (loading) return <div className="text-center py-12">載入中...</div>
   if (error) return <div className="text-center py-12 text-red-600">{error}</div>
@@ -78,8 +80,8 @@ export function RequestsPage() {
             <Input
               placeholder="搜尋需求..."
               className="pl-9"
-              value={filters.keyword}
-              onChange={(e) => setFilters(prev => ({ ...prev, keyword: e.target.value }))}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -138,7 +140,7 @@ export function RequestsPage() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {filteredNeeds.map(need => (
           <NeedCard 
             key={need.id} 
@@ -155,6 +157,27 @@ export function RequestsPage() {
           沒有符合條件的需求
         </div>
       )}
+
+      {/* Pagination Controls */}
+      <div className="flex justify-center items-center gap-4 mt-8">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page === 1}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          上一頁
+        </button>
+        <span className="text-sm font-medium text-slate-600">
+            第 {page} 頁 / 共 {totalPages} 頁
+        </span>
+        <button
+          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+          className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          下一頁
+        </button>
+      </div>
 
       <AnimatePresence>
         {selectedNeed && (

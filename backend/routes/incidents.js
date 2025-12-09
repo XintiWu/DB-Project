@@ -15,7 +15,9 @@ router.get("/", async (req, res) => {
         return res.json(result);
     }
 
-    const result = await service.getAllIncidents();
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const result = await service.getAllIncidents({ page, limit });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

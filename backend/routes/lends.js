@@ -3,6 +3,16 @@ import * as service from "../services/lends.js";
 
 const router = express.Router();
 
+// Get lends by user ID
+router.get("/user/:user_id", async (req, res) => {
+    try {
+        const result = await service.getLendsByUserId({ user_id: req.params.user_id });
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.get("/", async (req, res) => {
   try {
     if (req.query.user_id) {
@@ -20,6 +30,16 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Get lends by inventory ID (for warehouse owner)
+router.get("/inventory/:id", async (req, res) => {
+    try {
+      const result = await service.getLendsByInventoryId(req.params.id);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
 router.post("/", async (req, res) => {
   try {
     const result = await service.createLend(req.body);
@@ -27,6 +47,24 @@ router.post("/", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+router.put("/:id/approve", async (req, res) => {
+    try {
+      const result = await service.approveLend({ lend_id: req.params.id });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+});
+
+router.put("/:id/reject", async (req, res) => {
+    try {
+      const result = await service.rejectLend({ lend_id: req.params.id });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
 });
 
 // Return item (Update returned_at)

@@ -39,7 +39,8 @@ CREATE TABLE public."INVENTORIES" (
     inventory_id bigint NOT NULL,
     status character varying(20) NOT NULL,
     address character varying(100) NOT NULL,
-    CONSTRAINT "INVENTORIES_status_check" CHECK (((status)::text = ANY (ARRAY[('Active'::character varying)::text, ('Inactive'::character varying)::text])))
+    name character varying(100) DEFAULT 'My Warehouse'::character varying NOT NULL,
+    CONSTRAINT "INVENTORIES_status_check" CHECK (((status)::text = ANY (ARRAY[('Public'::character varying)::text, ('Private'::character varying)::text, ('Inactive'::character varying)::text])))
 );
 
 CREATE TABLE public."INVENTORY_ITEMS" (
@@ -47,7 +48,9 @@ CREATE TABLE public."INVENTORY_ITEMS" (
     item_id bigint NOT NULL,
     qty integer NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    status character varying(20)
+    status character varying(20) NOT NULL,
+    CONSTRAINT "INVENTORY_ITEMS_status_check" CHECK (((status)::text = ANY (ARRAY[('Owned'::character varying)::text, ('Lent'::character varying)::text, ('Unavailable'::character varying)::text, ('Borrowed'::character varying)::text]))),
+    CONSTRAINT "INVENTORY_ITEMS_pkey" PRIMARY KEY (inventory_id, item_id, status)
 );
 
 CREATE TABLE public."INVENTORY_OWNERS" (
@@ -94,7 +97,8 @@ CREATE TABLE public."LENDS" (
     qty integer NOT NULL,
     from_inventory_id bigint NOT NULL,
     lend_at timestamp with time zone DEFAULT now() NOT NULL,
-    returned_at timestamp with time zone
+    returned_at timestamp with time zone,
+    to_inventory_id bigint
 );
 
 CREATE TABLE public."PROVIDES" (
@@ -127,10 +131,13 @@ CREATE TABLE public."REQUESTS" (
     CONSTRAINT urgency_check CHECK (((urgency >= 1) AND (urgency <= 5)))
 );
 
-CREATE TABLE public."REQUEST_ACCEPTERS" (
+CREATE TABLE public."REQUEST_ACCEPTS" (
     request_id bigint NOT NULL,
     accepter_id bigint NOT NULL,
-    created_at timestamp with time zone NOT NULL
+    created_at timestamp with time zone NOT NULL,
+    "ETA" time with time zone,
+    description text,
+    source text
 );
 
 CREATE TABLE public."REQUEST_EQUIPMENTS" (
