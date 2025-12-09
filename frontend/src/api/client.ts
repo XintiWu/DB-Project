@@ -239,6 +239,11 @@ export function warnUser(data: any) {
 }
 
 
+
+export function getAllAreas() {
+  return request<any[]>("/area");
+}
+
 export function getInventoryById(inventoryId: string | number) {
   return request<any>(`/inventories/${inventoryId}`);
 }
