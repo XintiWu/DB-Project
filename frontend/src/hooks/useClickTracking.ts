@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 
 const API_BASE_URL = 'http://localhost:3000/api';

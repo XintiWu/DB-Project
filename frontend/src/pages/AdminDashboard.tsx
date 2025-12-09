@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getUnverifiedRequests, reviewRequest, warnUser } from '../api/client'
+import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -17,6 +17,7 @@ export function AdminDashboard() {
   const { user } = useAuth()
   const [data, setData] = useState<any>(null)
   const [pendingRequests, setPendingRequests] = useState<any[]>([])
+  const [pendingIncidents, setPendingIncidents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -24,6 +25,9 @@ export function AdminDashboard() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalPendingCount, setTotalPendingCount] = useState(0)
+  const [incidentPage, setIncidentPage] = useState(1)
+  const [totalIncidentPages, setTotalIncidentPages] = useState(1)
+  const [totalPendingIncidentCount, setTotalPendingIncidentCount] = useState(0)
 
   // Warning Dialog State
   const [warningOpen, setWarningOpen] = useState(false)
@@ -49,6 +53,19 @@ export function AdminDashboard() {
             setTotalPendingCount(requestsResponse.length)
         }
         setPendingRequests(reqData)
+
+        // Fetch pending incidents
+        const incidentsResponse = await getUnverifiedIncidents({ page: incidentPage, limit: 10 })
+        let incData: any[] = []
+        if ((incidentsResponse as any).data) {
+            incData = (incidentsResponse as any).data
+            setTotalIncidentPages((incidentsResponse as any).meta.totalPages)
+            setTotalPendingIncidentCount((incidentsResponse as any).meta.totalItems)
+        } else if (Array.isArray(incidentsResponse)) {
+            incData = incidentsResponse
+            setTotalPendingIncidentCount(incidentsResponse.length)
+        }
+        setPendingIncidents(incData)
       } catch (err) {
         console.error('Failed to fetch admin data:', err)
         setError('無法載入管理資料')
@@ -57,7 +74,7 @@ export function AdminDashboard() {
       }
     }
     fetchData()
-  }, [page])
+  }, [page, incidentPage])
 
   const handleReview = async (requestId: string, status: 'Approved' | 'Rejected') => {
     if (!user) return
@@ -73,6 +90,23 @@ export function AdminDashboard() {
       // alert(`已${status === 'Approved' ? '核准' : '駁回'}需求`) // Removed alert for smoother flow
     } catch (err) {
       console.error('Review failed:', err)
+      alert('審核失敗')
+    }
+  }
+
+  const handleIncidentReview = async (incidentId: string, status: 'Approved' | 'Rejected') => {
+    if (!user) return
+    try {
+      await reviewIncident(incidentId, {
+        reviewer_id: user.user_id,
+        review_status: status,
+        review_note: status === 'Approved' ? 'Approved by admin' : 'Rejected by admin'
+      })
+      
+      // Remove from list
+      setPendingIncidents(prev => prev.filter(i => i.incident_id !== incidentId))
+    } catch (err) {
+      console.error('Incident review failed:', err)
       alert('審核失敗')
     }
   }
@@ -130,6 +164,14 @@ export function AdminDashboard() {
             {totalPendingCount > 0 && (
               <span className="ml-2 bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-xs">
                 {totalPendingCount}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="incident_reviews">
+            待審核災情
+            {totalPendingIncidentCount > 0 && (
+              <span className="ml-2 bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-xs">
+                {totalPendingIncidentCount}
               </span>
             )}
           </TabsTrigger>
@@ -392,7 +434,109 @@ export function AdminDashboard() {
             </div>
             )}
         </TabsContent>
-      </Tabs>
+
+        <TabsContent value="incident_reviews" className="mt-6">
+          <div className="grid gap-4">
+            <AnimatePresence mode="popLayout">
+              {pendingIncidents.length === 0 ? (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }}
+                  className="text-center py-12 text-muted-foreground bg-slate-50 rounded-lg border border-dashed"
+                >
+                  目前沒有待審核的災情
+                </motion.div>
+              ) : (
+                pendingIncidents.map((inc) => (
+                  <motion.div
+                    layout
+                    key={inc.incident_id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ x: 300, opacity: 0, transition: { duration: 0.3 } }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  >
+                    <Card>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle className="text-lg">{inc.title}</CardTitle>
+                            <CardDescription>{new Date(inc.created_at).toLocaleString()}</CardDescription>
+                          </div>
+                          <div className={`px-2 py-1 rounded text-xs font-medium ${
+                            inc.severity >= 4 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            Severity: {inc.severity}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="col-span-2 grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-md">
+                            <div><span className="text-muted-foreground">Incident ID:</span> <span className="font-mono">{inc.incident_id}</span></div>
+                            <div><span className="text-muted-foreground">Reporter ID:</span> {inc.reporter_id}</div>
+                            <div><span className="text-muted-foreground">Type:</span> {inc.type}</div>
+                            <div><span className="text-muted-foreground">Status:</span> {inc.status}</div>
+                            <div><span className="text-muted-foreground">Location:</span> {inc.latitude}, {inc.longitude}</div>
+                          </div>
+                          
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Address:</span> {inc.address}
+                          </div>
+                          <div className="col-span-2">
+                             <span className="text-muted-foreground">Message:</span> 
+                             <p className="mt-1 p-2 bg-slate-50 rounded border text-slate-700">{inc.msg}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex justify-end gap-2 bg-slate-50/50 pt-4">
+                        <Button 
+                          variant="outline" 
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          onClick={() => handleIncidentReview(inc.incident_id, 'Rejected')}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          駁回
+                        </Button>
+                        <Button 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleIncidentReview(inc.incident_id, 'Approved')}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          核准
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </div>
+          
+            {/* Pagination Controls */}
+            {totalIncidentPages > 1 && (
+            <div className="flex justify-center items-center gap-4 mt-8">
+                <button
+                onClick={() => setIncidentPage(p => Math.max(1, p - 1))}
+                disabled={incidentPage === 1}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                上一頁
+                </button>
+                <span className="text-sm font-medium text-slate-600">
+                    第 {incidentPage} 頁 / 共 {totalIncidentPages} 頁
+                </span>
+                <button
+                onClick={() => setIncidentPage(p => Math.min(totalIncidentPages, p + 1))}
+                disabled={incidentPage === totalIncidentPages}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-white border hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                下一頁
+                </button>
+            </div>
+            )}
+        </TabsContent>
+        </Tabs>
 
       <Dialog open={warningOpen} onOpenChange={setWarningOpen}>
         <DialogContent className="sm:max-w-[425px]">

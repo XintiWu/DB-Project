@@ -9,8 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { NeedCard } from '../components/NeedCard'
 import { parseNeed } from '../lib/utils'
 import { MapPin, Calendar, Warehouse, Plus, ArrowRightLeft, Package } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { WarehouseManagerDialog } from '../components/WarehouseManagerDialog'
+import { AnimatePresence } from 'framer-motion'
 import { WarehouseCard } from '../components/WarehouseCard'
 import { DonateDialog } from '../components/DonateDialog'
 import { Badge } from '../components/ui/badge'
@@ -287,10 +287,6 @@ export function ProfilePage() {
                                 warehouse={inv} 
                                 onClick={openManager}
                                 layoutId={`warehouse-${inv.inventory_id}`}
-                                onDonate={() => {
-                                    setSelectedWarehouse(inv)
-                                    setIsDonateOpen(true)
-                                }}
                              />
                         ))
                     )}

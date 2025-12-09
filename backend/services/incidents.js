@@ -166,3 +166,65 @@ export const getIncidentById = async (id) => {
     throw error;
   }
 };
+
+/**
+ * Review Incident
+ */
+export const reviewIncident = async (data) => {
+  const { incident_id, reviewer_id, review_status, review_note } = data;
+
+  try {
+    const sql = `
+      UPDATE "INCIDENTS"
+      SET reviewer_id = $1, review_status = $2, review_note = $3, reviewed_at = NOW()
+      WHERE incident_id = $4
+      RETURNING *;
+    `;
+    
+    const { rows } = await pool.query(sql, [reviewer_id, review_status, review_note, incident_id]);
+    return rows[0];
+
+  } catch (error) {
+    console.error('Error reviewing incident:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all unverified incidents
+ */
+export const getAllUnverifiedIncidents = async (pagination = {}) => {
+  const { page = 1, limit = 10 } = pagination;
+  const offset = (page - 1) * limit;
+
+  try {
+    // 1. Get total count
+    const countSql = `SELECT COUNT(*) FROM "INCIDENTS" WHERE review_status IS NULL OR review_status = 'Unverified'`;
+    const countResult = await pool.query(countSql);
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / limit);
+
+    // 2. Get paginated data
+    const sql = `
+      SELECT *, reported_at as created_at 
+      FROM "INCIDENTS" 
+      WHERE review_status IS NULL OR review_status = 'Unverified'
+      ORDER BY reported_at ASC 
+      LIMIT $1 OFFSET $2
+    `;
+    const { rows } = await pool.query(sql, [limit, offset]);
+    
+    return {
+      data: rows,
+      meta: {
+        totalItems,
+        totalPages,
+        currentPage: parseInt(page, 10),
+        itemsPerPage: parseInt(limit, 10)
+      }
+    };
+  } catch (error) {
+    console.error('Error getting unverified incidents:', error);
+    throw error;
+  }
+};

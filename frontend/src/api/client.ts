@@ -150,6 +150,21 @@ export function reviewRequest(requestId: string, data: any) {
   });
 }
 
+export function getUnverifiedIncidents(options: { page?: number; limit?: number } = {}) {
+  const { page, limit } = options;
+  let query = "?unverified=true";
+  if (page) query += `&page=${page}`;
+  if (limit) query += `&limit=${limit}`;
+  return request<{ data: any[]; meta: any } | any[]>(`/incidents${query}`);
+}
+
+export function reviewIncident(incidentId: string, data: any) {
+  return request<any>(`/incidents/${incidentId}/review`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
 export function getSearchAnalytics() {
   return request<any>("/analytics/search");
 }
