@@ -18,7 +18,14 @@
 
 - **Node.js (with npm)**: v18 或以上
 - **PostgreSQL**: v14 或以上
-- **MongoDB**: v6.0 或以上 (僅限 Mac，Windows請手動安裝)
+- **MongoDB**: v6.0
+
+### 資料庫設定
+
+1. **PostgreSQL**
+
+   請在你的PostgreSQL中建立資料庫，使用release的.backup file還原資料庫，並到`\backend\.env`修改你的資料庫連線設定
+
 
 ### ⚡ 一鍵啟動 (Mac/Linux)
 
