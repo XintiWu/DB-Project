@@ -6,33 +6,6 @@ const router = express.Router();
 
 // ... (existing code)
 
-router.post("/bulk", async (req, res) => {
-  try {
-    const result = await service.createBulkRequestAccepts(req.body); // Renamed
-    res.status(201).json(result);
-  } catch (err) {
-    logError('[Route] POST /request-accepts/bulk', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.get("/", async (req, res) => {
-  try {
-    if (req.query.request_id) {
-        const result = await service.getAcceptsByRequestId({ request_id: req.query.request_id }); // Renamed
-        return res.json(result);
-    }
-    if (req.query.accepter_id) {
-        const result = await service.getAcceptedRequestsByAccepterId({ accepter_id: req.query.accepter_id }); // Renamed
-        return res.json(result);
-    }
-    const result = await service.getAllRequestAccepts(); // Renamed
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Bulk accept requests (for claim functionality) - MUST be before other POST routes
 router.post("/bulk", async (req, res) => {
   try {
@@ -40,17 +13,35 @@ router.post("/bulk", async (req, res) => {
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Items count:', req.body?.items?.length);
     
-    const result = await service.bulkAcceptRequests(req.body);
+    const result = await service.createBulkRequestAccepts(req.body);
     
     console.log('Bulk accept result:', JSON.stringify(result, null, 2));
     res.status(201).json(result);
   } catch (err) {
     console.error('Bulk accept error:', err);
     console.error('Error stack:', err.stack);
+    logError('[Route] POST /request-accepts/bulk', err);
     res.status(500).json({ 
       error: err.message,
       details: err.stack 
     });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    if (req.query.request_id) {
+        const result = await service.getAcceptsByRequestId({ request_id: req.query.request_id });
+        return res.json(result);
+    }
+    if (req.query.accepter_id) {
+        const result = await service.getAcceptedRequestsByAccepterId({ accepter_id: req.query.accepter_id });
+        return res.json(result);
+    }
+    const result = await service.getAllRequestAccepts();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

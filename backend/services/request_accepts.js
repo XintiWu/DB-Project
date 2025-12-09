@@ -24,7 +24,24 @@ export const createRequestAccept = async (data) => {
     const quantity = parseInt(qty) || 1;
 
     // 1. Create Accept Record
-    const { rows } = await pool.query(sqlAccept, [request_id, accepter_id, eta, description, source, quantity]);
+    let rows;
+    try {
+      const result = await pool.query(sqlAccept, [request_id, accepter_id, eta, description, source, quantity]);
+      rows = result.rows;
+    } catch (insertError) {
+      // Handle primary key constraint violation (race condition)
+      // PostgreSQL error code 23505 = unique_violation
+      // Check for both REQUEST_ACCEPTS and REQUEST_ACCEPTERS (in case both tables exist)
+      if (insertError.code === '23505' && 
+          (insertError.constraint?.includes('REQUEST_ACCEPT') || 
+           insertError.message?.includes('REQUEST_ACCEPT') ||
+           insertError.message?.includes('duplicate key'))) {
+        await pool.query('ROLLBACK');
+        throw new Error('您已經認領過此需求');
+      }
+      // Re-throw other errors
+      throw insertError;
+    }
     const acceptRecord = rows[0];
 
     // 2. Update REQUESTS current_qty
