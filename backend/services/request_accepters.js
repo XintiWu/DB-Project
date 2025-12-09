@@ -41,7 +41,19 @@ export const createRequestAccepter = async (data) => {
     const request = requestResult.rows[0];
     const requestType = request.type;
 
-    // 2. Create REQUEST_ACCEPTERS record
+    // 2. Check if already accepted (within transaction)
+    const checkExistingSql = `
+      SELECT * FROM "REQUEST_ACCEPTERS" 
+      WHERE request_id = $1 AND accepter_id = $2
+      FOR UPDATE;
+    `;
+    const existingResult = await client.query(checkExistingSql, [request_id, accepter_id]);
+    
+    if (existingResult.rows.length > 0) {
+      throw new Error('您已經認領過此需求');
+    }
+
+    // 3. Create REQUEST_ACCEPTERS record
     const insertAccepterSql = `
       INSERT INTO "REQUEST_ACCEPTERS" (request_id, accepter_id, created_at)
       VALUES ($1, $2, NOW())
@@ -51,7 +63,7 @@ export const createRequestAccepter = async (data) => {
 
     let totalQtyAccepted = 0;
 
-    // 3. Create type-specific accept record
+    // 4. Create type-specific accept record
     if (requestType === 'Material' || requestType === 'Tool') {
       // Material or Tool request
       if (!items || items.length === 0) {
@@ -90,7 +102,7 @@ export const createRequestAccepter = async (data) => {
       throw new Error(`未知的需求類型: ${requestType}`);
     }
 
-    // 4. Update REQUESTS.current_qty
+    // 5. Update REQUESTS.current_qty
     const newCurrentQty = request.current_qty + totalQtyAccepted;
     
     let updateRequestSql;
@@ -201,4 +213,205 @@ export const getAllRequestAccepters = async () => {
     console.error('Error getting all request accepters:', error);
     throw error;
   }
+};
+
+/**
+ * Bulk accept multiple requests (for claim functionality)
+ * This function handles the frontend claim format and converts it to backend format
+ * 
+ * @param {Object} data
+ * @param {string} data.claimerName - Name of the person claiming
+ * @param {string} data.claimerPhone - Phone number
+ * @param {string} data.claimerEmail - Email (optional)
+ * @param {string} data.notes - Additional notes
+ * @param {Array} data.items - Array of ClaimItem from frontend
+ * @param {number} data.accepter_id - User ID who is accepting (optional, will try to find by phone/email)
+ */
+export const bulkAcceptRequests = async (data) => {
+  const { claimerName, claimerPhone, claimerEmail, notes, items, accepter_id } = data;
+
+  console.log('bulkAcceptRequests called with:', { 
+    claimerName, 
+    claimerPhone, 
+    itemsCount: items?.length,
+    accepter_id 
+  });
+
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new Error('認領項目不能為空');
+  }
+
+  // Try to get or create user ID
+  let userId = accepter_id;
+  
+  if (!userId) {
+    try {
+      // Try to find user by phone
+      const userResult = await pool.query(
+        'SELECT user_id FROM "USERS" WHERE phone = $1 LIMIT 1',
+        [claimerPhone]
+      );
+      
+      if (userResult.rows.length > 0) {
+        userId = userResult.rows[0].user_id;
+        console.log('Found existing user:', userId);
+      } else {
+        // Create a new user if not found (temporary user for claiming)
+        const createUserResult = await pool.query(
+          'INSERT INTO "USERS" (name, phone, role, status) VALUES ($1, $2, $3, $4) RETURNING user_id',
+          [claimerName, claimerPhone, 'Member', 'Active']
+        );
+        userId = createUserResult.rows[0].user_id;
+        console.log('Created new user:', userId);
+      }
+    } catch (userError) {
+      console.error('Error handling user:', userError);
+      throw new Error(`無法處理用戶資訊: ${userError.message}`);
+    }
+  }
+
+  const results = [];
+  const errors = [];
+
+  // Process each claim item
+  for (const item of items) {
+    try {
+      console.log('Processing claim item:', item);
+      
+      const request_id = parseInt(item.needId);
+      
+      if (!request_id || isNaN(request_id)) {
+        errors.push({ item, error: `無效的需求 ID: ${item.needId}` });
+        continue;
+      }
+
+      // Get request details to determine type
+      const requestResult = await pool.query(
+        'SELECT type, incident_id, required_qty, current_qty FROM "REQUESTS" WHERE request_id = $1',
+        [request_id]
+      );
+
+      if (requestResult.rows.length === 0) {
+        errors.push({ item, error: `需求不存在: ${request_id}` });
+        continue;
+      }
+
+      const request = requestResult.rows[0];
+      const requestType = request.type;
+      const incident_id = request.incident_id;
+
+      console.log('Request details:', { request_id, type: requestType, incident_id });
+
+      // Check if already accepted (prevent duplicate)
+      const existingAccept = await pool.query(
+        'SELECT * FROM "REQUEST_ACCEPTERS" WHERE request_id = $1 AND accepter_id = $2',
+        [request_id, userId]
+      );
+
+      if (existingAccept.rows.length > 0) {
+        console.log('Already accepted, skipping:', { request_id, userId });
+        errors.push({ item, error: '您已經認領過此需求' });
+        continue;
+      }
+
+      // Prepare data for createRequestAccepter
+      let acceptData = {
+        request_id,
+        accepter_id: userId,
+        incident_id
+      };
+
+      if (requestType === 'Material' || requestType === 'Tool') {
+        // For Material/Tool, need to get items from REQUEST_MATERIALS
+        const materialsResult = await pool.query(
+          'SELECT item_id, qty FROM "REQUEST_MATERIALS" WHERE request_id = $1',
+          [request_id]
+        );
+
+        if (materialsResult.rows.length === 0) {
+          errors.push({ item, error: '需求沒有關聯的物品' });
+          continue;
+        }
+
+        // Use the first item with the claimed quantity
+        const firstItem = materialsResult.rows[0];
+        const claimQty = item.quantity || item.qty || 1;
+        
+        // Check if quantity is valid
+        const remaining = request.required_qty - request.current_qty;
+        if (claimQty > remaining) {
+          errors.push({ item, error: `認領數量超過剩餘需求（剩餘：${remaining}）` });
+          continue;
+        }
+
+        acceptData.items = [{
+          item_id: firstItem.item_id,
+          qty: claimQty
+        }];
+
+        console.log('Material/Tool accept data:', acceptData);
+
+      } else if (requestType === 'Humanpower') {
+        // For Humanpower, use the quantity from claim item
+        const claimQty = item.quantity || item.qty || 1;
+        
+        // Check if quantity is valid
+        const remaining = request.required_qty - request.current_qty;
+        if (claimQty > remaining) {
+          errors.push({ item, error: `認領數量超過剩餘需求（剩餘：${remaining}）` });
+          continue;
+        }
+
+        acceptData.qty = claimQty;
+        console.log('Humanpower accept data:', acceptData);
+
+      } else {
+        errors.push({ item, error: `未知的需求類型: ${requestType}` });
+        continue;
+      }
+
+      // Call createRequestAccepter
+      console.log('Calling createRequestAccepter with:', acceptData);
+      const result = await createRequestAccepter(acceptData);
+      results.push({
+        request_id,
+        success: true,
+        result
+      });
+      console.log('Successfully accepted request:', request_id);
+
+    } catch (error) {
+      console.error('Error processing claim item:', error);
+      errors.push({
+        item,
+        error: error.message || '處理失敗',
+        details: error.stack
+      });
+    }
+  }
+
+  const response = {
+    success: errors.length === 0,
+    totalItems: items.length,
+    successful: results.length,
+    failed: errors.length,
+    results,
+    errors,
+    claimerInfo: {
+      name: claimerName,
+      phone: claimerPhone,
+      email: claimerEmail,
+      userId
+    }
+  };
+
+  console.log('bulkAcceptRequests result:', JSON.stringify(response, null, 2));
+  
+  // 如果有錯誤，仍然返回成功（部分成功），但包含錯誤信息
+  // 如果全部失敗，才返回失敗
+  if (results.length === 0 && errors.length > 0) {
+    throw new Error(`所有認領項目都失敗：${errors.map(e => e.error).join('; ')}`);
+  }
+  
+  return response;
 };

@@ -11,7 +11,14 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || "API request failed");
+    const errorMessage = error.error || error.message || `HTTP ${response.status}: ${response.statusText}`;
+    console.error('API Error:', {
+      endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      error
+    });
+    throw new Error(errorMessage);
   }
 
   return response.json();
