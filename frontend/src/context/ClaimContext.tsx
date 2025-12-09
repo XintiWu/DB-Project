@@ -16,23 +16,29 @@ const STORAGE_KEY = 'disaster-relief-claim-items'
 
 export function ClaimProvider({ children }: { children: React.ReactNode }) {
   const [claimItems, setClaimItems] = useState<ClaimItem[]>([])
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       try {
-        setClaimItems(JSON.parse(saved))
+        const parsed = JSON.parse(saved)
+        setClaimItems(parsed)
       } catch (error) {
         console.error('Failed to load claim items:', error)
       }
     }
+    // Mark as initialized after loading (or if no saved data)
+    setIsInitialized(true)
   }, [])
 
-  // Save to localStorage
+  // Save to localStorage (only after initialization)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(claimItems))
-  }, [claimItems])
+    if (isInitialized) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(claimItems))
+    }
+  }, [claimItems, isInitialized])
 
   const addToClaimList = (need: Need, quantity: number, additionalInfo: Partial<ClaimItem> = {}) => {
     const existingIndex = claimItems.findIndex(item => item.needId === need.id)

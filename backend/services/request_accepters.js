@@ -41,7 +41,12 @@ export const createRequestAccepter = async (data) => {
     const request = requestResult.rows[0];
     const requestType = request.type;
 
-    // 2. Check if already accepted (within transaction)
+    // 2. Check if request is already completed
+    if (request.status === 'Completed') {
+      throw new Error('此需求已經完成，無法再認領');
+    }
+
+    // 3. Check if already accepted (within transaction)
     const checkExistingSql = `
       SELECT * FROM "REQUEST_ACCEPTERS" 
       WHERE request_id = $1 AND accepter_id = $2
@@ -53,7 +58,28 @@ export const createRequestAccepter = async (data) => {
       throw new Error('您已經認領過此需求');
     }
 
-    // 3. Create REQUEST_ACCEPTERS record
+    // 4. Calculate total quantity to accept
+    let totalQtyAccepted = 0;
+    
+    if (requestType === 'Material' || requestType === 'Tool') {
+      if (!items || items.length === 0) {
+        throw new Error('物資/工具需求必須提供 items 陣列');
+      }
+      totalQtyAccepted = items.reduce((sum, item) => sum + (item.qty || 0), 0);
+    } else if (requestType === 'Humanpower') {
+      if (!qty || qty <= 0) {
+        throw new Error('人力需求必須提供 qty（人數）');
+      }
+      totalQtyAccepted = qty;
+    }
+
+    // 5. Check if claiming quantity exceeds remaining need
+    const remaining = request.required_qty - request.current_qty;
+    if (totalQtyAccepted > remaining) {
+      throw new Error(`認領數量超過剩餘需求（剩餘：${remaining}，嘗試認領：${totalQtyAccepted}）`);
+    }
+
+    // 6. Create REQUEST_ACCEPTERS record
     const insertAccepterSql = `
       INSERT INTO "REQUEST_ACCEPTERS" (request_id, accepter_id, created_at)
       VALUES ($1, $2, NOW())
@@ -61,9 +87,7 @@ export const createRequestAccepter = async (data) => {
     `;
     const accepterResult = await client.query(insertAccepterSql, [request_id, accepter_id]);
 
-    let totalQtyAccepted = 0;
-
-    // 4. Create type-specific accept record
+    // 7. Create type-specific accept record
     if (requestType === 'Material' || requestType === 'Tool') {
       // Material or Tool request
       if (!items || items.length === 0) {
@@ -102,7 +126,7 @@ export const createRequestAccepter = async (data) => {
       throw new Error(`未知的需求類型: ${requestType}`);
     }
 
-    // 5. Update REQUESTS.current_qty
+    // 8. Update REQUESTS.current_qty
     const newCurrentQty = request.current_qty + totalQtyAccepted;
     
     let updateRequestSql;
@@ -245,6 +269,10 @@ export const bulkAcceptRequests = async (data) => {
   let userId = accepter_id;
   
   if (!userId) {
+    if (!claimerPhone) {
+      throw new Error('必須提供 accepter_id 或 claimerPhone');
+    }
+    
     try {
       // Try to find user by phone
       const userResult = await pool.query(
@@ -257,6 +285,9 @@ export const bulkAcceptRequests = async (data) => {
         console.log('Found existing user:', userId);
       } else {
         // Create a new user if not found (temporary user for claiming)
+        if (!claimerName) {
+          throw new Error('必須提供 claimerName 以建立新使用者');
+        }
         const createUserResult = await pool.query(
           'INSERT INTO "USERS" (name, phone, role, status) VALUES ($1, $2, $3, $4) RETURNING user_id',
           [claimerName, claimerPhone, 'Member', 'Active']
@@ -278,16 +309,17 @@ export const bulkAcceptRequests = async (data) => {
     try {
       console.log('Processing claim item:', item);
       
-      const request_id = parseInt(item.needId);
+      // Support both formats: item.needId (old) and item.request_id (new)
+      const request_id = parseInt(item.request_id || item.needId);
       
       if (!request_id || isNaN(request_id)) {
-        errors.push({ item, error: `無效的需求 ID: ${item.needId}` });
+        errors.push({ item, error: `無效的需求 ID: ${item.request_id || item.needId}` });
         continue;
       }
 
       // Get request details to determine type
       const requestResult = await pool.query(
-        'SELECT type, incident_id, required_qty, current_qty FROM "REQUESTS" WHERE request_id = $1',
+        'SELECT type, incident_id, required_qty, current_qty, status FROM "REQUESTS" WHERE request_id = $1',
         [request_id]
       );
 
@@ -299,6 +331,12 @@ export const bulkAcceptRequests = async (data) => {
       const request = requestResult.rows[0];
       const requestType = request.type;
       const incident_id = request.incident_id;
+
+      // Check if request is already completed
+      if (request.status === 'Completed') {
+        errors.push({ item, error: '此需求已經完成，無法再認領' });
+        continue;
+      }
 
       console.log('Request details:', { request_id, type: requestType, incident_id });
 
@@ -407,11 +445,13 @@ export const bulkAcceptRequests = async (data) => {
 
   console.log('bulkAcceptRequests result:', JSON.stringify(response, null, 2));
   
-  // 如果有錯誤，仍然返回成功（部分成功），但包含錯誤信息
-  // 如果全部失敗，才返回失敗
+  // 如果全部失敗，拋出錯誤
   if (results.length === 0 && errors.length > 0) {
-    throw new Error(`所有認領項目都失敗：${errors.map(e => e.error).join('; ')}`);
+    const errorMessages = errors.map(e => e.error).join('; ');
+    throw new Error(`所有認領項目都失敗：${errorMessages}`);
   }
   
+  // 如果有錯誤（部分失敗），仍然返回響應，但 success 為 false
+  // 前端需要檢查 success 和 errors 來決定如何處理
   return response;
 };

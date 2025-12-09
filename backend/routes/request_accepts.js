@@ -1,20 +1,9 @@
 import express from "express";
 import * as service from "../services/request_accepts.js";
+import { bulkAcceptRequests } from "../services/request_accepters.js";
 import { logError } from "../utils/logger.js";
 
 const router = express.Router();
-
-// ... (existing code)
-
-router.post("/bulk", async (req, res) => {
-  try {
-    const result = await service.createBulkRequestAccepts(req.body); // Renamed
-    res.status(201).json(result);
-  } catch (err) {
-    logError('[Route] POST /request-accepts/bulk', err);
-    res.status(500).json({ error: err.message });
-  }
-});
 
 router.get("/", async (req, res) => {
   try {
@@ -40,7 +29,7 @@ router.post("/bulk", async (req, res) => {
     console.log('Request body:', JSON.stringify(req.body, null, 2));
     console.log('Items count:', req.body?.items?.length);
     
-    const result = await service.bulkAcceptRequests(req.body);
+    const result = await bulkAcceptRequests(req.body);
     
     console.log('Bulk accept result:', JSON.stringify(result, null, 2));
     res.status(201).json(result);

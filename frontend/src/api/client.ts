@@ -37,6 +37,10 @@ export function getAllRequests(options: { page?: number; limit?: number; type?: 
   return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
 
+export function getRequestById(requestId: string | number) {
+  return request<any>(`/requests/${requestId}`);
+}
+
 // Update signature to be more specific if possible, but 'any' allows flexibility.
 // Ideally: submitClaim(data: { accepter_id: number, items: { request_id: number, qty: number, ... }[] })
 export function submitClaim(data: any) {
@@ -68,15 +72,21 @@ export function createIncident(data: any) {
   });
 }
 
-export function getAllShelters(options: { page?: number; limit?: number; keyword?: string } = {}) {
-  const { page, limit, keyword } = options;
+export function getAllShelters(options: { page?: number; limit?: number; keyword?: string; latitude?: number; longitude?: number } = {}) {
+  const { page, limit, keyword, latitude, longitude } = options;
   const params = new URLSearchParams();
   if (page) params.append('page', page.toString());
   if (limit) params.append('limit', limit.toString());
   if (keyword) params.append('keyword', keyword);
-  
+  if (latitude !== undefined) params.append('latitude', latitude.toString());
+  if (longitude !== undefined) params.append('longitude', longitude.toString());
+
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<{ data: any[]; meta: any } | any[]>(`/shelters${query}`);
+}
+
+export function searchNearbyShelters(latitude: number, longitude: number, limit: number = 10) {
+  return request<any[]>(`/shelters?latitude=${latitude}&longitude=${longitude}&limit=${limit}`);
 }
 
 export function getAllInventories(options: { page?: number; limit?: number } = {}) {
@@ -204,6 +214,14 @@ export function getSearchKeywordsAnalysis() {
 
 export function getVolunteerLeaderboard(limit: number = 10) {
     return request<any[]>(`/analytics/volunteer-leaderboard?limit=${limit}`);
+}
+
+export function getPageClickStats() {
+    return request<any[]>("/analytics/page-click-stats");
+}
+
+export function getTownshipRequestStats() {
+    return request<any[]>("/analytics/township-request-stats");
 }
 
 export function logSearch(data: any) {

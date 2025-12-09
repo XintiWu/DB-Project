@@ -220,7 +220,7 @@ export function WarehouseManagerDialog({ isOpen, onClose, warehouse, onUpdate, l
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/60 bg-white/50">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-900">管理倉庫: {warehouse.name || '未命名'}</h2>
+                    <h2 className="text-xl font-bold text-slate-900">管理倉庫: {warehouse.name || `倉庫 #${warehouse.inventory_id}`}</h2>
                     <p className="text-sm text-slate-500">ID: {warehouse.inventory_id}</p>
                 </div>
                 <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100" onClick={onClose}>

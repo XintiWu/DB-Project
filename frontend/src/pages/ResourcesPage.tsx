@@ -82,7 +82,7 @@ export function ResourcesPage() {
     setLoadingItems(true)
     setInventoryItems([]) // Clear previous items to ensure clean state
     try {
-      const items = await getInventoryItems(inv.inventory_id, 'Owned')
+      const items = await getInventoryItems(inv.inventory_id) // 不傳 status，獲取所有狀態的庫存
       setInventoryItems(items)
     } catch (err) {
       console.error('Failed to fetch inventory items:', err)

@@ -216,10 +216,11 @@ export const getAllInventories = async (pagination = {}) => {
     const sql = `
       SELECT i.*, CAST(COALESCE(SUM(ii.qty), 0) AS INTEGER) as total_qty
       FROM "INVENTORIES" i
-      LEFT JOIN "INVENTORY_ITEMS" ii ON i.inventory_id = ii.inventory_id AND ii.status = 'Owned'
+      LEFT JOIN "INVENTORY_ITEMS" ii ON i.inventory_id = ii.inventory_id 
+        AND ii.status IN ('Available', 'Lent', 'Unavailable')
       WHERE i.status = 'Public'
       GROUP BY i.inventory_id
-      ORDER BY total_qty DESC, i.inventory_id ASC
+      ORDER BY i.inventory_id ASC
       LIMIT $1 OFFSET $2
     `;
     const { rows } = await pool.query(sql, [limit, offset]);

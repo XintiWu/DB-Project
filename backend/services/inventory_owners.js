@@ -75,11 +75,16 @@ export const getInventoriesByUserId = async (data) => {
 
   try {
     const sql = `
-      SELECT io.*, i.address, i.name, i.updated_at,
-      (SELECT COUNT(*) FROM "INVENTORY_ITEMS" ii WHERE ii.inventory_id = i.inventory_id)::int as item_count
+      SELECT io.inventory_id, io.user_id, i.address, i.status,
+      CAST(COALESCE(SUM(ii.qty), 0) AS INTEGER) as total_qty,
+      COUNT(DISTINCT ii.item_id) as item_count
       FROM "INVENTORY_OWNERS" io
       JOIN "INVENTORIES" i ON io.inventory_id = i.inventory_id
+      LEFT JOIN "INVENTORY_ITEMS" ii ON i.inventory_id = ii.inventory_id 
+        AND ii.status IN ('Available', 'Lent', 'Unavailable')
       WHERE io.user_id = $1
+      GROUP BY io.inventory_id, io.user_id, i.inventory_id, i.address, i.status
+      ORDER BY i.inventory_id ASC
     `;
     const { rows } = await pool.query(sql, [user_id]);
     return rows;

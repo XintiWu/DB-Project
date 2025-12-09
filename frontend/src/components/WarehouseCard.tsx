@@ -32,7 +32,7 @@ export function WarehouseCard({ warehouse, onClick, layoutId }: Omit<WarehouseCa
               </div>
               <div>
                 <h3 className="font-bold text-lg leading-tight line-clamp-1">
-                  {warehouse.name || '未命名倉庫'}
+                  {warehouse.name || `倉庫 #${warehouse.inventory_id}`}
                 </h3>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                   <MapPin className="h-3 w-3" />

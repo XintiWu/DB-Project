@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import type { Need, MaterialNeed, ToolNeed, ManpowerNeed } from './types'
+import { REGIONS } from './constants'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -33,6 +34,50 @@ const mapUrgencyToSeverity = (urgency: number): 'critical' | 'high' | 'medium' |
   if (urgency === 4) return 'high'
   if (urgency === 3) return 'medium'
   return 'low'
+}
+
+/**
+ * 從地址中提取鄉鎮名稱
+ * 地址格式：花蓮縣XX鄉/鎮/市...
+ */
+function extractTownshipFromAddress(address: string | null | undefined): string {
+  if (!address) return '全部'
+  
+  // 直接檢查地址是否包含各個鄉鎮名稱（從最長到最短，避免部分匹配）
+  // 按照 REGIONS 的順序檢查，優先匹配完整的鄉鎮名稱
+  const townshipNames = [
+    '花蓮縣花蓮市',
+    '花蓮縣鳳林鎮',
+    '花蓮縣玉里鎮',
+    '花蓮縣新城鄉',
+    '花蓮縣吉安鄉',
+    '花蓮縣壽豐鄉',
+    '花蓮縣光復鄉',
+    '花蓮縣豐濱鄉',
+    '花蓮縣瑞穗鄉',
+    '花蓮縣富里鄉',
+    '花蓮縣秀林鄉',
+    '花蓮縣萬榮鄉',
+    '花蓮縣卓溪鄉'
+  ]
+  
+  for (const township of townshipNames) {
+    if (address.includes(township)) {
+      return township
+    }
+  }
+  
+  // 如果沒有匹配到，嘗試匹配「花蓮縣」後面的鄉鎮名稱（市、鎮、鄉）
+  const match = address.match(/花蓮縣([^縣市鎮鄉路街段號]+[市鎮鄉])/)
+  if (match && match[1]) {
+    const township = `花蓮縣${match[1]}`
+    // 檢查是否在 REGIONS 列表中
+    if (REGIONS.includes(township)) {
+      return township
+    }
+  }
+  
+  return '全部' // 預設返回「全部」，這樣就不會被篩選掉
 }
 
 export function parseNeed(row: any): Need {
@@ -96,11 +141,14 @@ export function parseNeed(row: any): Need {
     }
   }
 
+  // 從地址中提取鄉鎮資訊
+  const extractedRegion = extractTownshipFromAddress(row.address)
+  
   const baseNeed = {
     id: String(row.request_id),
     title: row.title || '未命名需求',
     location: row.address,
-    region: row.region || '未知地區',
+    region: row.region || extractedRegion,
     itemName: mainItemName,
     requiredQuantity: mainQty,
     currentQuantity: row.current_qty || 0,

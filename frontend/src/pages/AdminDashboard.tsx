@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser, getIncidentStatsByArea, getTopNeededCategories, getIdleResources, getVolunteerLeaderboard, getSearchKeywordsAnalysis, getFinancialStats } from '../api/client'
+import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser, getIncidentStatsByArea, getTopNeededCategories, getIdleResources, getVolunteerLeaderboard, getSearchKeywordsAnalysis, getFinancialStats, getPageClickStats, getTownshipRequestStats } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../components/ui/dialog'
 import { Textarea } from '../components/ui/textarea'
 import { Label } from '../components/ui/label'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, Legend } from 'recharts'
 import { Users, FileText, AlertTriangle, CheckCircle, Check, X, AlertOctagon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -37,6 +37,8 @@ export function AdminDashboard() {
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [keywordStats, setKeywordStats] = useState<any[]>([])
   const [financialStats, setFinancialStats] = useState<any>(null)
+  const [pageClickStats, setPageClickStats] = useState<any[]>([])
+  const [townshipRequestStats, setTownshipRequestStats] = useState<any[]>([])
 
   // Warning Dialog State
   const [warningOpen, setWarningOpen] = useState(false)
@@ -77,18 +79,22 @@ export function AdminDashboard() {
         setPendingIncidents(incData)
 
         // Fetch Analysis Data
-        const [incStats, topNeed, idleRes, volLeader, kwStats] = await Promise.all([
+        const [incStats, topNeed, idleRes, volLeader, kwStats, pageClicks, townshipReqs] = await Promise.all([
             getIncidentStatsByArea(),
             getTopNeededCategories(),
             getIdleResources(30),
             getVolunteerLeaderboard(10),
-            getSearchKeywordsAnalysis()
+            getSearchKeywordsAnalysis(),
+            getPageClickStats(),
+            getTownshipRequestStats()
         ])
         setIncidentStats(incStats)
         setTopNeeded(topNeed)
         setIdleResources(idleRes)
         setLeaderboard(volLeader)
         setKeywordStats(kwStats)
+        setPageClickStats(pageClicks)
+        setTownshipRequestStats(townshipReqs)
 
       } catch (err) {
         console.error('Failed to fetch admin data:', err)
@@ -340,23 +346,22 @@ export function AdminDashboard() {
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle>熱門需求物資 Top 5</CardTitle>
+                <CardDescription>需求量最高的物資項目</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {topItems.map((item: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between border-b pb-2 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-600">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium">{item.item_name}</span>
-                      </div>
-                      <div className="font-mono font-bold text-blue-600">
-                        {item.total_qty}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {topItems.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">尚無物資資料</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={topItems.map((item: any) => ({ name: item.item_name, value: parseInt(item.total_qty) }))} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={120} />
+                      <Tooltip />
+                      <Bar dataKey="value" fill="#FF8042" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -613,14 +618,19 @@ export function AdminDashboard() {
                         <CardDescription>各行政區目前的災情總數</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                             {incidentStats.map((stat, idx) => (
-                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
-                                     <span>{stat.area_name}</span>
-                                     <span className="font-bold">{stat.incident_count}</span>
-                                 </div>
-                             ))}
-                        </div>
+                        {incidentStats.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無災情資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={incidentStats} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" />
+                                    <YAxis dataKey="area_name" type="category" width={120} />
+                                    <Tooltip />
+                                    <Bar dataKey="incident_count" fill="#0088FE" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -631,14 +641,19 @@ export function AdminDashboard() {
                         <CardDescription>目前缺口最大的物資類別 (Required - Current)</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                             {topNeeded.map((stat, idx) => (
-                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
-                                     <span>{stat.category_name}</span>
-                                     <span className="font-bold text-red-600">{stat.shortage}</span>
-                                 </div>
-                             ))}
-                        </div>
+                        {topNeeded.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無物資類別資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={topNeeded} layout="vertical">
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis type="number" />
+                                    <YAxis dataKey="category_name" type="category" width={100} />
+                                    <Tooltip />
+                                    <Bar dataKey="shortage" fill="#FF8042" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -649,19 +664,19 @@ export function AdminDashboard() {
                         <CardDescription>協助請求次數最多的使用者</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                             {leaderboard.map((stat, idx) => (
-                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
-                                     <div className="flex items-center gap-2">
-                                        <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${idx < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100'}`}>
-                                            {idx + 1}
-                                        </span>
-                                        <span>{stat.name}</span>
-                                     </div>
-                                     <span className="font-bold text-green-600">{stat.help_count}</span>
-                                 </div>
-                             ))}
-                        </div>
+                        {leaderboard.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無志工資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={leaderboard}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="help_count" fill="#00C49F" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </CardContent>
                 </Card>
                 
@@ -672,14 +687,71 @@ export function AdminDashboard() {
                         <CardDescription>使用者最常搜尋的詞彙 (NoSQL Analysis)</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-2">
-                             {keywordStats.map((stat, idx) => (
-                                 <div key={idx} className="flex justify-between items-center border-b pb-2">
-                                     <span>{stat._id}</span>
-                                     <span className="font-bold">{stat.count}</span>
-                                 </div>
-                             ))}
-                        </div>
+                        {keywordStats.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無搜尋資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={keywordStats.map(s => ({ keyword: s._id, count: s.count }))}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="keyword" angle={-45} textAnchor="end" height={100} />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar dataKey="count" fill="#8884d8" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+                
+                 {/* B-5 Page Click Stats */}
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>分頁點擊統計 (Page Click Statistics)</CardTitle>
+                        <CardDescription>哪個功能分頁比較多需求 (NoSQL Analysis)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {pageClickStats.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無點擊資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={pageClickStats.map(s => ({ page: s.page, count: s.count, users: s.uniqueUsers }))}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="page" angle={-45} textAnchor="end" height={100} />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Bar yAxisId="left" dataKey="count" fill="#00C49F" name="點擊數" />
+                                    <Bar yAxisId="right" dataKey="users" fill="#FFBB28" name="用戶數" />
+                                    <Legend />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+                
+                 {/* B-6 Township Request Stats */}
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>鄉鎮需求統計 (Township Request Statistics)</CardTitle>
+                        <CardDescription>花蓮縣的哪個鄉鎮比較多需求 (NoSQL Analysis)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {townshipRequestStats.length === 0 ? (
+                            <div className="text-center py-4 text-muted-foreground">尚無鄉鎮需求資料</div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={townshipRequestStats.map(s => ({ township: s.township, count: s.count, users: s.uniqueUsers }))}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="township" angle={-45} textAnchor="end" height={120} />
+                                    <YAxis yAxisId="left" />
+                                    <YAxis yAxisId="right" orientation="right" />
+                                    <Tooltip />
+                                    <Bar yAxisId="left" dataKey="count" fill="#FF8042" name="需求數" />
+                                    <Bar yAxisId="right" dataKey="users" fill="#FFBB28" name="用戶數" />
+                                    <Legend />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
                     </CardContent>
                 </Card>
             </div>

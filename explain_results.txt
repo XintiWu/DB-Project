@@ -1,0 +1,81 @@
+SET
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=566.27..570.61 rows=1736 width=223) (actual time=1.586..1.615 rows=1762 loops=1)
+   Sort Key: r.urgency DESC, r.created_at DESC
+   Sort Method: quicksort  Memory: 289kB
+   ->  Hash Left Join  (cost=99.37..472.86 rows=1736 width=223) (actual time=0.274..1.295 rows=1762 loops=1)
+         Hash Cond: (i.category_id = ic.category_id)
+         ->  Hash Join  (cost=98.05..465.61 rows=1736 width=109) (actual time=0.260..1.175 rows=1762 loops=1)
+               Hash Cond: (rm.item_id = i.item_id)
+               ->  Hash Join  (cost=95.70..458.38 rows=1736 width=96) (actual time=0.247..1.051 rows=1762 loops=1)
+                     Hash Cond: (r.request_id = rm.request_id)
+                     ->  Seq Scan on "REQUESTS" r  (cost=0.00..349.18 rows=5139 width=88) (actual time=0.002..0.519 rows=5139 loops=1)
+                           Filter: ((status)::text = 'Not Completed'::text)
+                           Rows Removed by Filter: 4955
+                     ->  Hash  (cost=53.09..53.09 rows=3409 width=12) (actual time=0.239..0.240 rows=3409 loops=1)
+                           Buckets: 4096  Batches: 1  Memory Usage: 179kB
+                           ->  Seq Scan on "REQUEST_MATERIALS" rm  (cost=0.00..53.09 rows=3409 width=12) (actual time=0.002..0.118 rows=3409 loops=1)
+               ->  Hash  (cost=1.60..1.60 rows=60 width=25) (actual time=0.010..0.010 rows=60 loops=1)
+                     Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                     ->  Seq Scan on "ITEMS" i  (cost=0.00..1.60 rows=60 width=25) (actual time=0.003..0.005 rows=60 loops=1)
+         ->  Hash  (cost=1.14..1.14 rows=14 width=126) (actual time=0.004..0.004 rows=14 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 9kB
+               ->  Seq Scan on "ITEM_CATEGORIES" ic  (cost=0.00..1.14 rows=14 width=126) (actual time=0.002..0.003 rows=14 loops=1)
+ Planning Time: 0.536 ms
+ Execution Time: 1.706 ms
+(23 rows)
+
+                                                        QUERY PLAN                                                        
+--------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=374.46..374.47 rows=3 width=16) (actual time=0.821..0.821 rows=3 loops=1)
+   Sort Key: (count(*)) DESC
+   Sort Method: quicksort  Memory: 25kB
+   ->  HashAggregate  (cost=374.41..374.44 rows=3 width=16) (actual time=0.818..0.818 rows=3 loops=1)
+         Group Key: type
+         Batches: 1  Memory Usage: 24kB
+         ->  Seq Scan on "REQUESTS"  (cost=0.00..323.94 rows=10094 width=8) (actual time=0.001..0.216 rows=10094 loops=1)
+ Planning Time: 0.167 ms
+ Execution Time: 0.831 ms
+(9 rows)
+
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=83.66..83.68 rows=5 width=17) (actual time=0.693..0.693 rows=5 loops=1)
+   ->  Sort  (cost=83.66..83.81 rows=60 width=17) (actual time=0.692..0.692 rows=5 loops=1)
+         Sort Key: (sum(rm.qty)) DESC
+         Sort Method: top-N heapsort  Memory: 25kB
+         ->  HashAggregate  (cost=82.07..82.67 rows=60 width=17) (actual time=0.686..0.689 rows=60 loops=1)
+               Group Key: i.item_name
+               Batches: 1  Memory Usage: 24kB
+               ->  Hash Join  (cost=2.35..65.02 rows=3409 width=13) (actual time=0.009..0.298 rows=3409 loops=1)
+                     Hash Cond: (rm.item_id = i.item_id)
+                     ->  Seq Scan on "REQUEST_MATERIALS" rm  (cost=0.00..53.09 rows=3409 width=8) (actual time=0.001..0.071 rows=3409 loops=1)
+                     ->  Hash  (cost=1.60..1.60 rows=60 width=17) (actual time=0.006..0.006 rows=60 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                           ->  Seq Scan on "ITEMS" i  (cost=0.00..1.60 rows=60 width=17) (actual time=0.001..0.003 rows=60 loops=1)
+ Planning Time: 0.047 ms
+ Execution Time: 0.700 ms
+(15 rows)
+
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=648.81..650.93 rows=850 width=60) (actual time=37.401..37.499 rows=2551 loops=1)
+   Sort Key: i.inventory_id
+   Sort Method: quicksort  Memory: 299kB
+   ->  HashAggregate  (cost=575.56..607.45 rows=850 width=60) (actual time=36.505..36.857 rows=2551 loops=1)
+         Group Key: i.inventory_id
+         Filter: (sum(ii.qty) > 0)
+         Batches: 1  Memory Usage: 625kB
+         ->  Hash Join  (cost=149.01..531.47 rows=8819 width=56) (actual time=1.650..23.436 rows=9009 loops=1)
+               Hash Cond: (ii.inventory_id = i.inventory_id)
+               ->  Seq Scan on "INVENTORY_ITEMS" ii  (cost=0.00..336.59 rows=17459 width=12) (actual time=0.004..18.834 rows=17459 loops=1)
+               ->  Hash  (cost=117.12..117.12 rows=2551 width=52) (actual time=1.644..1.645 rows=2551 loops=1)
+                     Buckets: 4096  Batches: 1  Memory Usage: 243kB
+                     ->  Seq Scan on "INVENTORIES" i  (cost=0.00..117.12 rows=2551 width=52) (actual time=0.003..1.519 rows=2551 loops=1)
+                           Filter: ((status)::text = 'Active'::text)
+                           Rows Removed by Filter: 2499
+ Planning Time: 0.952 ms
+ Execution Time: 37.560 ms
+(17 rows)
+

@@ -109,7 +109,8 @@ export const getTopNeededCategories = async () => {
 export const getIdleResources = async (days = 30) => {
     try {
         const sql = `
-            SELECT i.item_name, ii.qty, ii.updated_at, inv.name as inventory_name
+            SELECT i.item_name, ii.qty, ii.updated_at, 
+                   CONCAT('倉庫 #', inv.inventory_id) as inventory_name
             FROM "INVENTORY_ITEMS" ii
             JOIN "ITEMS" i ON ii.item_id = i.item_id
             JOIN "INVENTORIES" inv ON ii.inventory_id = inv.inventory_id
@@ -446,5 +447,85 @@ export const logSearch = async (searchData) => {
   } catch (error) {
     console.error('Error logging search:', error);
     throw error;
+  }
+};
+
+/**
+ * 獲取分頁點擊統計（哪個功能分頁比較多需求）
+ */
+export const getPageClickStats = async () => {
+  try {
+    const db = await getMongoDB();
+    const clicksCollection = db.collection('clicks');
+    
+    const pipeline = [
+      {
+        $match: {
+          action: 'page_view',
+          page: { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$page',
+          count: { $sum: 1 },
+          uniqueUsers: { $addToSet: '$userId' }
+        }
+      },
+      {
+        $project: {
+          page: '$_id',
+          count: 1,
+          uniqueUsers: { $size: '$uniqueUsers' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ];
+    
+    const stats = await clicksCollection.aggregate(pipeline).toArray();
+    return stats;
+  } catch (error) {
+    console.error('Error getting page click stats:', error);
+    return [];
+  }
+};
+
+/**
+ * 獲取鄉鎮需求統計（花蓮縣的哪個鄉鎮比較多需求）
+ */
+export const getTownshipRequestStats = async () => {
+  try {
+    const db = await getMongoDB();
+    const clicksCollection = db.collection('clicks');
+    
+    const pipeline = [
+      {
+        $match: {
+          'metadata.township': { $exists: true },
+          page: { $in: ['requests', 'publish'] } // 只統計需求相關頁面
+        }
+      },
+      {
+        $group: {
+          _id: '$metadata.township',
+          count: { $sum: 1 },
+          uniqueUsers: { $addToSet: '$userId' }
+        }
+      },
+      {
+        $project: {
+          township: '$_id',
+          count: 1,
+          uniqueUsers: { $size: '$uniqueUsers' }
+        }
+      },
+      { $sort: { count: -1 } }
+    ];
+    
+    const stats = await clicksCollection.aggregate(pipeline).toArray();
+    return stats;
+  } catch (error) {
+    console.error('Error getting township request stats:', error);
+    return [];
   }
 };

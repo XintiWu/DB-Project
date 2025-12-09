@@ -157,7 +157,22 @@ export const SEVERITY_INFO: Record<Severity, { name: string; color: string; bgCo
 /**
  * 區域選項
  */
-export const REGIONS = ['全部', '北部', '中部', '南部', '東部', '離島']
+export const REGIONS = [
+  '全部',
+  '花蓮縣花蓮市',
+  '花蓮縣鳳林鎮',
+  '花蓮縣玉里鎮',
+  '花蓮縣新城鄉',
+  '花蓮縣吉安鄉',
+  '花蓮縣壽豐鄉',
+  '花蓮縣光復鄉',
+  '花蓮縣豐濱鄉',
+  '花蓮縣瑞穗鄉',
+  '花蓮縣富里鄉',
+  '花蓮縣秀林鄉',
+  '花蓮縣萬榮鄉',
+  '花蓮縣卓溪鄉'
+]
 
 /**
  * 需求狀態資訊

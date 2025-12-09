@@ -161,4 +161,24 @@ router.get('/volunteer-leaderboard', async (req, res) => {
     }
 });
 
+// 分頁點擊統計
+router.get('/page-click-stats', async (req, res) => {
+    try {
+        const result = await analyticsService.getPageClickStats();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 鄉鎮需求統計
+router.get('/township-request-stats', async (req, res) => {
+    try {
+        const result = await analyticsService.getTownshipRequestStats();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

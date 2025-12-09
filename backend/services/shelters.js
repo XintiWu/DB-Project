@@ -161,3 +161,51 @@ export const getAllShelters = async (params = {}) => {
     throw error;
   }
 };
+
+/**
+ * Search Nearby Shelters by Location (Haversine Formula)
+ * 查詢附近避難所（依地理位置）
+ */
+export const searchNearbyShelters = async (data) => {
+  const { latitude, longitude, limit = 10 } = data;
+
+  if (!latitude || !longitude) {
+    throw new Error('經緯度座標為必填');
+  }
+
+  try {
+    const sql = `
+      SELECT
+        shelter_id,
+        name,
+        address,
+        phone,
+        capacity,
+        type,
+        latitude,
+        longitude,
+        ROUND(
+          6371 * acos(
+            cos(radians($1)) *
+            cos(radians(latitude)) *
+            cos(radians(longitude) - radians($2)) +
+            sin(radians($1)) *
+            sin(radians(latitude))
+          )::numeric, 2
+        ) AS distance_km
+      FROM "SHELTERS"
+      WHERE latitude IS NOT NULL
+      AND longitude IS NOT NULL
+      ORDER BY distance_km ASC
+      LIMIT $3;
+    `;
+    
+    const { rows } = await pool.query(sql, [latitude, longitude, limit]);
+    
+    return rows;
+
+  } catch (error) {
+    console.error('Error searching nearby shelters:', error);
+    throw error;
+  }
+};

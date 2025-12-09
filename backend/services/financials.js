@@ -173,25 +173,21 @@ export const getFinancialStats = async () => {
     const totalSql = `
       SELECT COALESCE(SUM(amount::numeric), 0) as total_amount, COUNT(*) as total_count 
       FROM "FINANCIALS"
-      WHERE created_at >= NOW() - INTERVAL '1 year'
     `;
     const purposeSql = `
       SELECT purpose, COALESCE(SUM(amount::numeric), 0) as total_amount 
       FROM "FINANCIALS" 
-      WHERE created_at >= NOW() - INTERVAL '1 year'
       GROUP BY purpose
     `;
     const monthSql = `
       SELECT TO_CHAR(created_at, 'YYYY-MM') as month, COALESCE(SUM(amount::numeric), 0) as total_amount 
       FROM "FINANCIALS" 
-      WHERE created_at >= NOW() - INTERVAL '1 year'
       GROUP BY TO_CHAR(created_at, 'YYYY-MM') 
       ORDER BY month DESC 
     `;
     const sourceSql = `
       SELECT source, COALESCE(SUM(amount::numeric), 0) as total_amount 
       FROM "FINANCIALS" 
-      WHERE created_at >= NOW() - INTERVAL '1 year'
       GROUP BY source 
       ORDER BY total_amount DESC 
       LIMIT 5

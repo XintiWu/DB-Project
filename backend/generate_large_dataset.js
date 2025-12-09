@@ -121,24 +121,64 @@ async function generateLargeDataset() {
     const categoryIds = categoriesRes.rows.map(r => r.category_id);
     console.log(`✅ 找到 ${categoryIds.length} 個物品類別`);
 
-    // Items
-    let itemsRes = await client.query('SELECT item_id FROM "ITEMS" LIMIT 100');
-    if (itemsRes.rows.length === 0) {
-      console.log('⚠️  沒有找到物品，正在創建測試物品...');
-      const itemNames = ['飲用水', '毛毯', '醫療口罩', '乾糧', '帳篷', '睡袋', '手電筒', '電池', '急救包', '雨衣'];
-      for (let i = 0; i < itemNames.length; i++) {
+    // Items - 分別獲取物資和工具
+    let materialItemsRes = await client.query(`
+      SELECT i.item_id, i.item_name 
+      FROM "ITEMS" i
+      JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+      WHERE ic.is_tool = false
+    `);
+    let toolItemsRes = await client.query(`
+      SELECT i.item_id, i.item_name 
+      FROM "ITEMS" i
+      JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+      WHERE ic.is_tool = true
+    `);
+    
+    if (materialItemsRes.rows.length === 0 || toolItemsRes.rows.length === 0) {
+      console.log('⚠️  沒有找到足夠的物品，正在創建測試物品...');
+      // 創建物資類別物品
+      const materialNames = ['飲用水', '毛毯', '醫療口罩', '乾糧', '帳篷', '睡袋', '手電筒', '電池', '急救包', '雨衣'];
+      for (let i = 0; i < materialNames.length; i++) {
         await client.query(`
           INSERT INTO "ITEMS" (item_id, item_name, category_id, unit)
           VALUES ($1, $2, $3, 'pcs')
-        `, [3000 + i, itemNames[i], categoryIds[0]]);
+          ON CONFLICT (item_id) DO NOTHING
+        `, [3000 + i, materialNames[i], categoryIds.find(c => c === 1) || categoryIds[0]]);
       }
-      itemsRes = await client.query('SELECT item_id FROM "ITEMS"');
+      // 創建工具類別物品
+      const toolNames = ['發電機', '抽水機', '鏟子', '電鋸', '照明設備', '無線電', '救生艇', '繩索', '安全帽', '手套'];
+      for (let i = 0; i < toolNames.length; i++) {
+        await client.query(`
+          INSERT INTO "ITEMS" (item_id, item_name, category_id, unit)
+          VALUES ($1, $2, $3, 'pcs')
+          ON CONFLICT (item_id) DO NOTHING
+        `, [4000 + i, toolNames[i], categoryIds.find(c => c === 2) || categoryIds[1] || categoryIds[0]]);
+      }
+      // 重新查詢
+      materialItemsRes = await client.query(`
+        SELECT i.item_id, i.item_name 
+        FROM "ITEMS" i
+        JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+        WHERE ic.is_tool = false
+      `);
+      toolItemsRes = await client.query(`
+        SELECT i.item_id, i.item_name 
+        FROM "ITEMS" i
+        JOIN "ITEM_CATEGORIES" ic ON i.category_id = ic.category_id
+        WHERE ic.is_tool = true
+      `);
     }
-    const itemIds = itemsRes.rows.map(r => r.item_id);
-    console.log(`✅ 找到 ${itemIds.length} 個物品`);
+    
+    const materialItemIds = materialItemsRes.rows.map(r => r.item_id);
+    const toolItemIds = toolItemsRes.rows.map(r => r.item_id);
+    const materialItemMap = new Map(materialItemsRes.rows.map(r => [r.item_name, r.item_id]));
+    const toolItemMap = new Map(toolItemsRes.rows.map(r => [r.item_name, r.item_id]));
+    
+    console.log(`✅ 找到 ${materialItemIds.length} 個物資物品，${toolItemIds.length} 個工具物品`);
 
-    // Skill Tags
-    let skillsRes = await client.query('SELECT skill_tag_id FROM "SKILL_TAGS" LIMIT 10');
+    // Skill Tags - 獲取所有技能標籤並建立映射
+    let skillsRes = await client.query('SELECT skill_tag_id, skill_tag_name FROM "SKILL_TAGS"');
     if (skillsRes.rows.length === 0) {
       console.log('⚠️  沒有找到技能標籤，正在創建...');
       const skills = ['Medical', 'Rescue', 'Driving', 'Cooking', 'Engineering', 'Communication'];
@@ -149,9 +189,35 @@ async function generateLargeDataset() {
           VALUES ($1, $2)
         `, [sid++, skill]);
       }
-      skillsRes = await client.query('SELECT skill_tag_id FROM "SKILL_TAGS"');
+      skillsRes = await client.query('SELECT skill_tag_id, skill_tag_name FROM "SKILL_TAGS"');
     }
     const skillIds = skillsRes.rows.map(r => r.skill_tag_id);
+    const skillMap = new Map(skillsRes.rows.map(r => [r.skill_tag_name, r.skill_tag_id]));
+    
+    // 建立 title 到 skill 的映射（簡化版，根據關鍵字匹配）
+    const titleToSkillMap = {
+      '醫護人員': ['急診專科醫師', '外傷科醫師', '麻醉科醫師', '手術室護理師', '加護病房護理師'],
+      '搬運志工': ['職業大客車駕照', '堆高機操作', '重機械操作-吊車'],
+      '交通引導': ['職業大客車駕照'],
+      '心理輔導': ['臨床心理師', '諮商心理師'],
+      '搜救人員': ['高級救護技術員(EMT-P)', '中級救護技術員(EMT-2)', '初級救護技術員(EMT-1)'],
+      '煮食志工': [],
+      '清潔人員': [],
+      '翻譯人員': [],
+      '社工': ['社工師證照'],
+      '司機': ['職業大客車駕照'],
+      '工程師': ['結構技師', '水利技師', '大地技師', '電機技師'],
+      '建築工人': ['結構技師'],
+      '電工': ['電機技師'],
+      '水電工': ['電機技師', '水利技師'],
+      '志工': [],
+      '志願者': [],
+      '義工': [],
+      '協助人員': [],
+      '支援人力': [],
+      '救援人員': ['高級救護技術員(EMT-P)', '中級救護技術員(EMT-2)']
+    };
+    
     console.log(`✅ 找到 ${skillIds.length} 個技能標籤\n`);
 
     // 2. 生成 INVENTORIES
@@ -226,7 +292,9 @@ async function generateLargeDataset() {
       for (const inventoryId of batchInventoryIds) {
         const numItems = getRandomInt(1, ITEMS_PER_INVENTORY * 2);
         for (let k = 0; k < numItems; k++) {
-          const itemId = getRandomElement(itemIds);
+          // 混合物資和工具物品
+          const allItemIds = [...materialItemIds, ...toolItemIds];
+          const itemId = getRandomElement(allItemIds);
           const qty = getRandomInt(1, 100);
           const status = getRandomElement(['Available', 'Lent', 'Unavailable']);  // 修正為正確的 status 值
           
@@ -272,13 +340,33 @@ async function generateLargeDataset() {
         const longitude = getRandomFloat(121.0, 121.8);  // 花蓮縣經度範圍
         
         let title = '';
-        if (type === 'Material') title = getRandomElement(TITLES_MATERIAL);
-        else if (type === 'Tool') title = getRandomElement(TITLES_TOOL);
-        else title = getRandomElement(TITLES_HUMANPOWER);
+        let matchedItemId = null;
+        let matchedSkillId = null;
+        
+        if (type === 'Material') {
+          title = getRandomElement(TITLES_MATERIAL);
+          // 嘗試根據 title 匹配物品名稱
+          matchedItemId = materialItemMap.get(title) || getRandomElement(materialItemIds);
+        } else if (type === 'Tool') {
+          title = getRandomElement(TITLES_TOOL);
+          // 嘗試根據 title 匹配物品名稱
+          matchedItemId = toolItemMap.get(title) || getRandomElement(toolItemIds);
+        } else {
+          title = getRandomElement(TITLES_HUMANPOWER);
+          // 根據 title 匹配技能
+          const possibleSkills = titleToSkillMap[title] || [];
+          if (possibleSkills.length > 0) {
+            const matchedSkillName = getRandomElement(possibleSkills);
+            matchedSkillId = skillMap.get(matchedSkillName) || getRandomElement(skillIds);
+          } else {
+            matchedSkillId = getRandomElement(skillIds);
+          }
+        }
         
         requestData.push({
           requesterId, incidentId, status, urgency, type,
-          address, latitude, longitude, requiredQty, title
+          address, latitude, longitude, requiredQty, title,
+          matchedItemId, matchedSkillId
         });
       }
       
@@ -296,9 +384,9 @@ async function generateLargeDataset() {
         
         const requestId = insertResult.rows[0].request_id;
         
-        // 插入相關資料
+        // 插入相關資料（使用匹配的物品/技能）
         if (reqData.type === 'Material') {
-          const itemId = getRandomElement(itemIds);
+          const itemId = reqData.matchedItemId || getRandomElement(materialItemIds);
           try {
             await client.query(`
               INSERT INTO "REQUEST_MATERIALS" (request_id, item_id, qty)
@@ -306,10 +394,10 @@ async function generateLargeDataset() {
               ON CONFLICT DO NOTHING
             `, [requestId, itemId, reqData.requiredQty]);
           } catch (err) {
-            // 忽略錯誤
+            console.error(`Error inserting material for request ${requestId}:`, err.message);
           }
         } else if (reqData.type === 'Tool') {
-          const itemId = getRandomElement(itemIds);
+          const itemId = reqData.matchedItemId || getRandomElement(toolItemIds);
           try {
             await client.query(`
               INSERT INTO "REQUEST_EQUIPMENTS" (request_id, required_equipment, qty)
@@ -317,10 +405,10 @@ async function generateLargeDataset() {
               ON CONFLICT DO NOTHING
             `, [requestId, itemId, reqData.requiredQty]);
           } catch (err) {
-            // 忽略錯誤
+            console.error(`Error inserting equipment for request ${requestId}:`, err.message);
           }
         } else if (reqData.type === 'Humanpower') {
-          const skillId = getRandomElement(skillIds);
+          const skillId = reqData.matchedSkillId || getRandomElement(skillIds);
           try {
             await client.query(`
               INSERT INTO "REQUEST_HUMANPOWER" (request_id, skill_tag_id, qty)
@@ -328,7 +416,7 @@ async function generateLargeDataset() {
               ON CONFLICT DO NOTHING
             `, [requestId, skillId, reqData.requiredQty]);
           } catch (err) {
-            // 忽略錯誤
+            console.error(`Error inserting humanpower for request ${requestId}:`, err.message);
           }
         }
       }

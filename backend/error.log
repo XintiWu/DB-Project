@@ -32,3 +32,287 @@ Stack: error: invalid input syntax for type time with time zone: "2025-12-19"
     at async Module.createBulkRequestAccepts (file:///Users/jakehu/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
     at async file:///Users/jakehu/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
 ----------------------------------------
+[2025-12-09T09:06:08.043Z] [Service] createInventory
+Message: column "name" of relation "INVENTORIES" does not exist
+SQL Details:
+  code: 42703
+Stack: error: column "name" of relation "INVENTORIES" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Module.createInventory (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/inventories.js:29:29)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/inventories.js:28:20
+----------------------------------------
+[2025-12-09T09:08:02.904Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:02.905Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:02.905Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:07.835Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:07.836Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:07.836Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:13.550Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:13.551Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:08:13.552Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:24:52.663Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:24:52.666Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:24:52.666Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:25:06.895Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:25:06.899Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:25:06.901Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:15.185Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:15.187Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:15.188Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:20.693Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:20.694Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:38:20.695Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:44:33.417Z] [Service] createRequestAccept
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:44:33.419Z] [Service] createBulkRequestAccepts
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:44:33.420Z] [Route] POST /request-accepts/bulk
+Message: relation "REQUEST_ACCEPTS" does not exist
+SQL Details:
+  code: 42P01
+Stack: error: relation "REQUEST_ACCEPTS" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async createRequestAccept (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:27:22)
+    at async Module.createBulkRequestAccepts (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/request_accepts.js:157:23)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/request_accepts.js:11:20
+----------------------------------------
+[2025-12-09T09:47:46.682Z] [Service] createInventory
+Message: column "name" of relation "INVENTORIES" does not exist
+SQL Details:
+  code: 42703
+Stack: error: column "name" of relation "INVENTORIES" does not exist
+    at /Users/lintsaiying/Desktop/DB-Project/backend/node_modules/pg/lib/client.js:545:17
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async Module.createInventory (file:///Users/lintsaiying/Desktop/DB-Project/backend/services/inventories.js:29:29)
+    at async file:///Users/lintsaiying/Desktop/DB-Project/backend/routes/inventories.js:28:20
+----------------------------------------

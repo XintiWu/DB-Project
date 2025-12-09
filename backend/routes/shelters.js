@@ -5,6 +5,15 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
+    // 查詢附近避難所（依地理位置）
+    if (req.query.latitude && req.query.longitude) {
+      const latitude = parseFloat(req.query.latitude);
+      const longitude = parseFloat(req.query.longitude);
+      const limit = parseInt(req.query.limit) || 10;
+      const result = await service.searchNearbyShelters({ latitude, longitude, limit });
+      return res.json(result);
+    }
+    
     if (req.query.area_id) {
         const result = await service.searchSheltersByAreaId({ area_id: req.query.area_id });
         return res.json(result);

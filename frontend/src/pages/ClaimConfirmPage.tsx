@@ -8,7 +8,7 @@ import { Input } from '../components/ui/input'
 
 import { Badge } from '../components/ui/badge'
 import { ALL_CATEGORIES } from '../lib/constants'
-import { submitClaim } from '../api/client'
+import { submitClaim, getRequestById } from '../api/client'
 
 export function ClaimConfirmPage() {
   const navigate = useNavigate()
@@ -59,6 +59,46 @@ export function ClaimConfirmPage() {
     setIsSubmitting(true)
 
     try {
+      // 在提交前檢查每個需求的當前狀態
+      const validationErrors: string[] = []
+      
+      for (const item of claimItems) {
+        try {
+          const currentRequest = await getRequestById(item.needId)
+          
+          // 檢查需求是否存在
+          if (!currentRequest) {
+            validationErrors.push(`需求「${item.title}」不存在`)
+            continue
+          }
+          
+          // 檢查需求是否已完成
+          if (currentRequest.status === 'Completed') {
+            validationErrors.push(`需求「${item.title}」已經完成，無法再認領`)
+            continue
+          }
+          
+          // 檢查認領數量是否超過剩餘需求
+          const finalQty = adjustedQuantities[item.needId] || item.quantity || 1
+          const remaining = (currentRequest.required_qty || 0) - (currentRequest.current_qty || 0)
+          
+          if (finalQty > remaining) {
+            validationErrors.push(`需求「${item.title}」的認領數量（${finalQty}）超過剩餘需求（${remaining}）`)
+            continue
+          }
+        } catch (err: any) {
+          console.error(`檢查需求 ${item.needId} 時發生錯誤:`, err)
+          validationErrors.push(`無法檢查需求「${item.title}」的狀態：${err.message || '未知錯誤'}`)
+        }
+      }
+      
+      // 如果有驗證錯誤，阻止提交
+      if (validationErrors.length > 0) {
+        alert(`認領失敗：\n${validationErrors.join('\n')}`)
+        setIsSubmitting(false)
+        return
+      }
+
       // Use user.user_id as accepter_id
       // items validation logic here if needed
 
@@ -108,13 +148,32 @@ export function ClaimConfirmPage() {
 
       // 檢查響應是否成功
       if (result && result.success === false) {
-        const errorMsg = result.errors?.map((e: any) => e.error).join(', ') || '認領失敗'
+        const errorMsg = result.errors?.map((e: any) => e.error).join('\n') || '認領失敗'
         throw new Error(errorMsg)
       }
 
-      clearClaimList()
-      // Pass minimal info for success page if needed, or just status
-      navigate('/claim/success', { state: { claimRecord: { ...claimData, id: 'PENDING', claimerName: user.name } } })
+      // 檢查是否有錯誤（即使 success 可能為 true，如果有 errors 也要處理）
+      if (result && result.errors && result.errors.length > 0) {
+        const errorMsg = result.errors.map((e: any) => e.error).join('\n')
+        // 如果有部分成功，仍然顯示錯誤但不清除清單
+        if (result.successful && result.successful > 0) {
+          alert(`部分認領成功，但有項目失敗：\n${errorMsg}`)
+          // 不清除清單，讓用戶可以重試失敗的項目
+          return
+        } else {
+          // 全部失敗（理論上不會到這裡，因為會拋出錯誤）
+          throw new Error(errorMsg)
+        }
+      }
+
+      // 只有當完全成功時才清除清單並導航
+      if (result && result.successful === result.totalItems) {
+        clearClaimList()
+        navigate('/claim/success', { state: { claimRecord: { ...claimData, id: 'PENDING', claimerName: user.name } } })
+      } else {
+        // 如果沒有錯誤但也不完全成功，可能是異常情況
+        throw new Error('認領處理異常，請稍後再試')
+      }
       
     } catch (err: any) {
       console.error('Claim failed:', err)
@@ -123,8 +182,21 @@ export function ClaimConfirmPage() {
         error: err?.error,
         stack: err?.stack
       })
-      const errorMessage = err?.message || err?.error || '認領失敗，請稍後再試'
-      alert(`認領失敗：${errorMessage}`)
+      
+      // 提取錯誤訊息
+      let errorMessage = '認領失敗，請稍後再試'
+      if (err?.message) {
+        errorMessage = err.message
+      } else if (err?.error) {
+        errorMessage = err.error
+      }
+      
+      // 如果錯誤訊息包含「已經完成」，顯示更友好的訊息
+      if (errorMessage.includes('已經完成') || errorMessage.includes('無法再認領')) {
+        alert(`認領失敗：此需求已經完成，無法再認領`)
+      } else {
+        alert(`認領失敗：${errorMessage}`)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -248,3 +320,4 @@ export function ClaimConfirmPage() {
     </div>
   )
 }
+
