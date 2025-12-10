@@ -30,18 +30,74 @@ export function ReportIncidentPage() {
 
   /* eslint-disable */
   const [areas, setAreas] = useState<any[]>([])
+  const [hierarchy, setHierarchy] = useState<Record<string, any[]>>({})
+  const [cities, setCities] = useState<string[]>([])
+  const [selectedCity, setSelectedCity] = useState('')
 
   useEffect(() => {
     import('../api/client').then(({ getAllAreas }) => {
         getAllAreas().then(data => {
             setAreas(data || [])
+            
+            // Build Hierarchy
+            const h: Record<string, any[]> = {}
+            data?.forEach((a: any) => {
+                // Assume first 3 chars is City (e.g. 台北市, 新北市)
+                const city = a.area_name.substring(0, 3)
+                if (!h[city]) h[city] = []
+                h[city].push(a)
+            })
+            setHierarchy(h)
+            setCities(Object.keys(h))
+
+            // Default selection
             if (data && data.length > 0) {
-                setFormData(prev => ({ ...prev, area_id: data[0].area_id }))
+                 // Don't auto-set random area, let user choose or use default
             }
         }).catch(console.error)
     })
   }, [])
   /* eslint-enable */
+
+  // Sync selectedCity when area_id changes (e.g. from auto-detect)
+  useEffect(() => {
+      if (formData.area_id && areas.length > 0) {
+          const area = areas.find(a => a.area_id === formData.area_id)
+          if (area) {
+              const city = area.area_name.substring(0, 3)
+              setSelectedCity(city)
+          }
+      }
+  }, [formData.area_id, areas])
+
+  const detectArea = async (lat: number, lng: number) => {
+      try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+              headers: { 'Accept-Language': 'zh-TW' }
+          })
+          const data = await res.json()
+          if (data && data.address) {
+              const city = (data.address.city || data.address.county || '').replace(/臺/g, '台')
+              const district = (data.address.suburb || data.address.town || data.address.district || '').replace(/臺/g, '台')
+              
+              if (city && district) {
+                  // Try exact match
+                  let match = areas.find(a => a.area_name === city + district)
+                  // If not found, try fuzzy or just city match?
+                  // For now, assume format [City][District]
+                  
+                  if (match) {
+                      setFormData(prev => ({ ...prev, area_id: match.area_id }))
+                      // alert(`已自動切換至：${match.area_name}`)
+                  } else {
+                      console.log('No matching area found for:', city + district)
+                  }
+              }
+          }
+      } catch (err) {
+          console.error('Auto-detect area failed:', err)
+      }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -145,25 +201,47 @@ export function ReportIncidentPage() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="area">行政區</Label>
-                <select
-                  id="area"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  value={formData.area_id}
-                  onChange={(e) => setFormData({ ...formData, area_id: e.target.value })}
-                >
-                  {areas.map(area => (
-                      <option key={area.area_id} value={area.area_id}>{area.area_name}</option>
-                  ))}
-                  {areas.length === 0 && <option value="100">台北市中正區 (預設)</option>}
-                </select>
+                <Label>行政區</Label>
+                <div className="grid grid-cols-2 gap-4">
+                    <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={selectedCity}
+                        onChange={(e) => {
+                            const city = e.target.value
+                            setSelectedCity(city)
+                            // Auto select first district of new city
+                            if (city && hierarchy[city]?.length > 0) {
+                                setFormData(prev => ({ ...prev, area_id: hierarchy[city][0].area_id }))
+                            }
+                        }}
+                    >
+                        <option value="">選擇縣市</option>
+                        {cities.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        value={formData.area_id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, area_id: e.target.value }))}
+                    >
+                        {selectedCity && hierarchy[selectedCity]?.map(a => (
+                            <option key={a.area_id} value={a.area_id}>{a.area_name.replace(selectedCity, '')}</option>
+                        ))}
+                        {!selectedCity && <option value="">請先選擇縣市</option>}
+                    </select>
+                </div>
             </div>
 
 
             <div className="space-y-2">
               <Label>地圖定位 (選擇座標)</Label>
               <LocationPicker 
-                onLocationSelect={(lat, lng) => setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))}
+                onLocationSelect={(lat, lng) => {
+                    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
+                    detectArea(lat, lng)
+                }}
               />
               {formData.latitude && formData.longitude && (
                  <p className="text-xs text-muted-foreground">

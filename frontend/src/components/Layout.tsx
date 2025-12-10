@@ -3,7 +3,7 @@ import { HeartHandshake, Home, PlusCircle, ShoppingCart, AlertTriangle, Package,
 import { cn } from '../lib/utils'
 import { useAuth } from '../context/AuthContext'
 import { useClaimContext } from '../context/ClaimContext'
-import { useClickTracking } from '../hooks/useClickTracking'
+import { useClickTracking, usePageTracking } from '../hooks/useClickTracking'
 
 function ClaimBadge() {
   const { getTotalItems } = useClaimContext()
@@ -69,6 +69,7 @@ export function Layout() {
   const location = useLocation()
   const { user } = useAuth()
   const { track } = useClickTracking()
+  usePageTracking()
 
   const navItems = [
     { href: '/', label: '首頁', icon: Home },
@@ -183,7 +184,7 @@ export function Layout() {
 
       <footer className="bg-white border-t py-8 mt-auto">
         <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
-          <p>© 2024 DisasterRelief Platform. All rights reserved. Version 1.0.0</p>
+          <p>© 2024 DisasterRelief Platform. All rights reserved. Version 1.0.1</p>
         </div>
       </footer>
     </div>

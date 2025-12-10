@@ -209,6 +209,13 @@ export function getSearchKeywordsAnalysis() {
     return request<any[]>("/analytics/search-keywords-analysis");
 }
 
+export function getPageStats(startDate?: string, endDate?: string) {
+    let query = "";
+    if (startDate) query += `?startDate=${startDate}`;
+    if (endDate) query += `${query ? '&' : '?'}endDate=${endDate}`;
+    return request<any[]>(`/analytics/pages${query}`);
+}
+
 export function getVolunteerLeaderboard(limit: number = 10) {
     return request<any[]>(`/analytics/volunteer-leaderboard?limit=${limit}`);
 }

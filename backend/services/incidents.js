@@ -252,7 +252,7 @@ export const getAllIncidents = async (pagination = {}) => {
 
     // 2. Get paginated data
     // 2. Get paginated data
-    const sql = `
+    let sql = `
       SELECT i.*, i.reported_at as created_at, a.area_name 
       FROM "INCIDENTS" i
       LEFT JOIN "AREA" a ON i.area_id = a.area_id

@@ -55,6 +55,16 @@ export function RequestsPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setFilters(prev => ({ ...prev, keyword: searchTerm }))
+      
+      if (searchTerm) {
+        import('../api/client').then(({ logSearch }) => {
+            logSearch({
+                keyword: searchTerm,
+                filters: { type: 'Request' },
+                results_count: 0 // Ideally we'd know this, but it's async from useNeedData
+            }).catch(console.error);
+        });
+      }
     }, 500)
 
     return () => clearTimeout(timer)

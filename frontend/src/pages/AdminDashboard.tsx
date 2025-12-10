@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser, getIncidentStatsByArea, getTopNeededCategories, getIdleResources, getVolunteerLeaderboard, getSearchKeywordsAnalysis, getFinancialStats } from '../api/client'
+import { getAnalytics, getUnverifiedRequests, getUnverifiedIncidents, reviewRequest, reviewIncident, warnUser, getIncidentStatsByArea, getTopNeededCategories, getIdleResources, getVolunteerLeaderboard, getSearchKeywordsAnalysis, getFinancialStats, getPageStats } from '../api/client'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -37,6 +37,7 @@ export function AdminDashboard() {
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [keywordStats, setKeywordStats] = useState<any[]>([])
   const [financialStats, setFinancialStats] = useState<any>(null)
+  const [pageStats, setPageStats] = useState<any[]>([])
 
   // Warning Dialog State
   const [warningOpen, setWarningOpen] = useState(false)
@@ -77,18 +78,20 @@ export function AdminDashboard() {
         setPendingIncidents(incData)
 
         // Fetch Analysis Data
-        const [incStats, topNeed, idleRes, volLeader, kwStats] = await Promise.all([
+        const [incStats, topNeed, idleRes, volLeader, kwStats, pStats] = await Promise.all([
             getIncidentStatsByArea(),
             getTopNeededCategories(),
             getIdleResources(30),
             getVolunteerLeaderboard(10),
-            getSearchKeywordsAnalysis()
+            getSearchKeywordsAnalysis(),
+            getPageStats()
         ])
         setIncidentStats(incStats)
         setTopNeeded(topNeed)
         setIdleResources(idleRes)
         setLeaderboard(volLeader)
         setKeywordStats(kwStats)
+        setPageStats(pStats)
 
       } catch (err) {
         console.error('Failed to fetch admin data:', err)
@@ -681,6 +684,25 @@ export function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
+
+             {/* Page Click Analysis */}
+             <Card>
+                <CardHeader>
+                    <CardTitle>頁面流量分析 (Page Views)</CardTitle>
+                    <CardDescription>各頁面訪問次數統計 (Page Click Analysis)</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[350px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={pageStats}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="page" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="count" fill="#8884d8" name="訪問次數" />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </CardContent>
+             </Card>
 
              {/* B-3 Idle Resources */}
              <Card>
