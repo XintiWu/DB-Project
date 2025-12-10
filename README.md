@@ -11,6 +11,29 @@
 [![Express](https://img.shields.io/badge/Express-5.0-000000.svg)](https://expressjs.com/)
 
 ---
+## 📸 專案展示
+
+### 百字摘要
+
+本系統整合災情通報、需求管理、物資倉儲、捐款金流、避難所資訊，提供使用者即時發布需求與查詢資源；管理者可在後台審查並進行數據分析，後端採交易管理與索引優化確保一致性與效能，並以 NoSQL 做行為分析。
+
+### 系統截圖
+
+<img width="1470" height="919" alt="image" src="https://github.com/user-attachments/assets/1350c67d-7c0b-472d-a426-3f4ecbd53953" />
+<img width="1470" height="919" alt="image" src="https://github.com/user-attachments/assets/5dc0bcb6-c243-4c69-b936-1b8278cf7d85" />
+<img width="1470" height="919" alt="image" src="https://github.com/user-attachments/assets/8785af8c-10f2-4d38-a13c-a50f557eb903" />
+
+### 展示影片
+
+[YouTube 影片連結](https://youtu.be/Mhpc-JamN9M)、
+[Google Drive 影片連結](https://drive.google.com/file/d/1oVZsKItmttJ6T8CXfrLdVoimPTlImBJw/view?usp=drive_link)
+
+### 簡報、報告數連結
+
+[簡報 PDF 連結](https://drive.google.com/file/d/1Nghhm6_7sjK0UfZSJt8uS9pG5N3JoKnv/view?usp=drive_link)、
+[報告書 PDF 連結](https://drive.google.com/file/d/1i7lqos9M4bzALCBmdqizV1LTjulo72po/view?usp=drive_link)
+
+---
 
 ## 🚀 快速開始
 
