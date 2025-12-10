@@ -183,7 +183,7 @@ export function Layout() {
 
       <footer className="bg-white border-t py-8 mt-auto">
         <div className="container mx-auto px-4 text-center text-slate-500 text-sm">
-          <p>© 2024 DisasterRelief Platform. All rights reserved.</p>
+          <p>© 2024 DisasterRelief Platform. All rights reserved. Version 1.0.0</p>
         </div>
       </footer>
     </div>

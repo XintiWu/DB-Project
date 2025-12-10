@@ -240,8 +240,13 @@ export const getAllIncidents = async (pagination = {}) => {
 
   try {
     // 1. Get total count
-    const countSql = 'SELECT COUNT(*) FROM "INCIDENTS"';
-    const countResult = await pool.query(countSql);
+    let countSql = 'SELECT COUNT(*) FROM "INCIDENTS" WHERE 1=1';
+    const countParams = [];
+    if (pagination.review_status) {
+        countSql += ' AND review_status = $1';
+        countParams.push(pagination.review_status);
+    }
+    const countResult = await pool.query(countSql, countParams);
     const totalItems = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.ceil(totalItems / limit);
 
@@ -251,10 +256,22 @@ export const getAllIncidents = async (pagination = {}) => {
       SELECT i.*, i.reported_at as created_at, a.area_name 
       FROM "INCIDENTS" i
       LEFT JOIN "AREA" a ON i.area_id = a.area_id
+      WHERE 1=1
+    `;
+    
+    const params = [limit, offset];
+    let paramIdx = 3;
+
+    if (pagination.review_status) {
+        sql += ` AND i.review_status = $${paramIdx++}`;
+        params.push(pagination.review_status);
+    }
+
+    sql += `
       ORDER BY i.reported_at DESC 
       LIMIT $1 OFFSET $2
     `;
-    const { rows } = await pool.query(sql, [limit, offset]);
+    const { rows } = await pool.query(sql, params);
     
     return {
       data: rows,

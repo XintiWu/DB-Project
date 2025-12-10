@@ -55,11 +55,12 @@ export function createRequest(data: any) {
   });
 }
 
-export function getAllIncidents(options: { page?: number; limit?: number } = {}) {
-  const { page, limit } = options;
+export function getAllIncidents(options: { page?: number; limit?: number; review_status?: string } = {}) {
+  const { page, limit, review_status } = options;
   let query = "";
   if (page) query += `?page=${page}`;
   if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
+  if (review_status) query += `${query ? '&' : '?'}review_status=${review_status}`;
   return request<{ data: any[]; meta: any } | any[]>(`/incidents${query}`);
 }
 

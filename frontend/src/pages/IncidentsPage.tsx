@@ -23,7 +23,7 @@ export function IncidentsPage() {
     async function fetchData() {
       setLoading(true)
       try {
-        const response: any = await getAllIncidents({ page, limit: 12 })
+        const response: any = await getAllIncidents({ page, limit: 12, review_status: 'Verified' })
         let data = []
         if (response.data) {
             data = response.data
