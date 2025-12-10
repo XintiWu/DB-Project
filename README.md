@@ -20,17 +20,21 @@
 - **PostgreSQL**: v14 或以上
 - **MongoDB**: v6.0
 
-### 資料庫設定
+### 事前準備
+1. Node.js
 
-1. **PostgreSQL**
+   請先手動安裝Node.js+npm
+   
+2.  **PostgreSQL**
 
    請在你的 PostgreSQL 中建立資料庫，使用 release 的.backup file 還原資料庫。
-
-   複製專案根目錄的 `.env.example` 為 `.env`，並填入你的資料庫連線資訊 (DB_USER, DB_PASSWORD 等)。
+   
+3. `.env`
+   更名專案根目錄的 `.env.example` 為 `.env`，並填入你的資料庫連線資訊 (DB_USER, DB_PASSWORD 等)。
 
 ### ⚡ 一鍵啟動 (Mac/Linux)
 
-專案根目錄已設定 `concurrently`，可使用 npm 指令同時啟動前後端。
+1. 自動啟動：專案根目錄已設定 `concurrently`，可使用 npm 指令同時啟動前後端。
 
 ```bash
 npm install # 首次執行需安裝依賴
@@ -38,13 +42,13 @@ npm run install:all # 一鍵安裝所有依賴 (Root, Backend, Frontend)
 npm start
 ```
 
-或者使用提供的 Shell 腳本 (Mac/Linux)：
+2. Shell 腳本 (Mac/Linux)：
 
 ```bash
 ./start_system.sh
 ```
 
-(Windows)：
+3. 批次檔(Windows)：
 
 ```bash
 ./start_system.bat
