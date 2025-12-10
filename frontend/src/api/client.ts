@@ -34,7 +34,7 @@ export function getAllRequests(options: { page?: number; limit?: number; type?: 
   if (incident_id) params.append('incident_id', incident_id);
   if (area_name) params.append('area_name', area_name);
   if (area_id) params.append('area_id', area_id);
-  
+
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<{ data: any[]; meta: any } | any[]>(`/requests${query}`);
 }
@@ -55,12 +55,13 @@ export function createRequest(data: any) {
   });
 }
 
-export function getAllIncidents(options: { page?: number; limit?: number; review_status?: string } = {}) {
-  const { page, limit, review_status } = options;
+export function getAllIncidents(options: { page?: number; limit?: number; review_status?: string; unverified?: string | boolean } = {}) {
+  const { page, limit, review_status, unverified } = options;
   let query = "";
   if (page) query += `?page=${page}`;
   if (limit) query += `${query ? '&' : '?'}limit=${limit}`;
   if (review_status) query += `${query ? '&' : '?'}review_status=${review_status}`;
+  if (unverified) query += `${query ? '&' : '?'}unverified=true`;
   return request<{ data: any[]; meta: any } | any[]>(`/incidents${query}`);
 }
 
@@ -77,7 +78,7 @@ export function getAllShelters(options: { page?: number; limit?: number; keyword
   if (page) params.append('page', page.toString());
   if (limit) params.append('limit', limit.toString());
   if (keyword) params.append('keyword', keyword);
-  
+
   const query = params.toString() ? `?${params.toString()}` : '';
   return request<{ data: any[]; meta: any } | any[]>(`/shelters${query}`);
 }
@@ -194,30 +195,30 @@ export function getSearchAnalytics() {
 }
 
 export function getIncidentStatsByArea() {
-    return request<any[]>("/analytics/incident-stats");
+  return request<any[]>("/analytics/incident-stats");
 }
 
 export function getTopNeededCategories() {
-    return request<any[]>("/analytics/top-needed-categories");
+  return request<any[]>("/analytics/top-needed-categories");
 }
 
 export function getIdleResources(days: number = 30) {
-    return request<any[]>(`/analytics/idle-resources?days=${days}`);
+  return request<any[]>(`/analytics/idle-resources?days=${days}`);
 }
 
 export function getSearchKeywordsAnalysis() {
-    return request<any[]>("/analytics/search-keywords-analysis");
+  return request<any[]>("/analytics/search-keywords-analysis");
 }
 
 export function getPageStats(startDate?: string, endDate?: string) {
-    let query = "";
-    if (startDate) query += `?startDate=${startDate}`;
-    if (endDate) query += `${query ? '&' : '?'}endDate=${endDate}`;
-    return request<any[]>(`/analytics/pages${query}`);
+  let query = "";
+  if (startDate) query += `?startDate=${startDate}`;
+  if (endDate) query += `${query ? '&' : '?'}endDate=${endDate}`;
+  return request<any[]>(`/analytics/pages${query}`);
 }
 
 export function getVolunteerLeaderboard(limit: number = 10) {
-    return request<any[]>(`/analytics/volunteer-leaderboard?limit=${limit}`);
+  return request<any[]>(`/analytics/volunteer-leaderboard?limit=${limit}`);
 }
 
 export function logSearch(data: any) {
@@ -251,7 +252,7 @@ export function getMyInventories(userId: string) {
 export function getInventoryItems(inventoryId: string | number, status?: string) {
   let url = `/inventory-items/${inventoryId}`;
   if (status) {
-      url += `?status=${status}`;
+    url += `?status=${status}`;
   }
   return request<any>(url);
 }

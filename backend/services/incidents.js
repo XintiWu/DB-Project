@@ -4,9 +4,9 @@ import { pool } from '../db.js';
  * Create Incident
  */
 export const createIncident = async (data) => {
-  const { 
-    title, type, severity, area_id, reporter_id, 
-    status, msg, latitude, longitude 
+  const {
+    title, type, severity, area_id, reporter_id,
+    status, msg, latitude, longitude
   } = data;
 
   // Convert status to valid values: 'Occurring' or 'Solved'
@@ -27,7 +27,7 @@ export const createIncident = async (data) => {
     'Critical': 4,
     'Extreme': 5
   };
-  
+
   let severityInt;
   if (typeof severity === 'string') {
     severityInt = severityMap[severity] || 2; // Default to 2 (Medium) if unknown
@@ -36,19 +36,19 @@ export const createIncident = async (data) => {
   } else {
     severityInt = parseInt(severity) || 2;
   }
-  
+
   // 確保 severityInt 是數字
   if (isNaN(severityInt) || severityInt < 1 || severityInt > 5) {
     console.warn(`[createIncident] Invalid severity value: ${severity}, defaulting to 2`);
     severityInt = 2;
   }
-  
+
   console.log(`[createIncident] Converting severity: "${severity}" (${typeof severity}) -> ${severityInt} (${typeof severityInt})`);
   console.log(`[createIncident] Converting status: "${status}" -> "${validStatus}"`);
 
   // Prepare values before try block so it's accessible in catch
   const values = [
-    title, type, severityInt, area_id, reporter_id, 
+    title, type, severityInt, area_id, reporter_id,
     validStatus, msg, latitude, longitude
   ];
 
@@ -56,21 +56,21 @@ export const createIncident = async (data) => {
     //latitude, longitude can be null
     const sql = `
       INSERT INTO "INCIDENTS" 
-      (title, type, severity, area_id, reporter_id, status, msg, latitude, longitude)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      (title, type, severity, area_id, reporter_id, status, msg, latitude, longitude, review_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Pending') 
       RETURNING *, reported_at as created_at;
     `;
-    
-    console.log(`[createIncident] SQL values:`, values.map((v, i) => `$${i+1}=${v} (${typeof v})`).join(', '));
+
+    console.log(`[createIncident] SQL values:`, values.map((v, i) => `$${i + 1}=${v} (${typeof v})`).join(', '));
 
     const { rows } = await pool.query(sql, values);
     console.log(`[createIncident] Successfully created incident ID:`, rows[0]?.incident_id);
-    return rows[0]; 
+    return rows[0];
 
   } catch (error) {
     console.error('[createIncident] Error creating incident:', error);
-    console.error('[createIncident] Received data:', JSON.stringify({ 
-      title, type, severity, severityInt, area_id, reporter_id 
+    console.error('[createIncident] Received data:', JSON.stringify({
+      title, type, severity, severityInt, area_id, reporter_id
     }, null, 2));
     console.error('[createIncident] SQL values:', values);
     throw error;
@@ -81,10 +81,10 @@ export const createIncident = async (data) => {
  * Update Incident
  */
 export const updateIncident = async (data) => {
-//data should include id and the fields to update
-  const { 
-    id, title, type, severity, area_id, 
-    status, msg, latitude, longitude 
+  //data should include id and the fields to update
+  const {
+    id, title, type, severity, area_id,
+    status, msg, latitude, longitude
   } = data;
 
   // Convert severity string to integer (1-5)
@@ -95,7 +95,7 @@ export const updateIncident = async (data) => {
     'Critical': 4,
     'Extreme': 5
   };
-  const severityInt = typeof severity === 'string' 
+  const severityInt = typeof severity === 'string'
     ? (severityMap[severity] || 2)  // Default to 2 (Medium) if unknown
     : parseInt(severity) || 2;
 
@@ -107,10 +107,10 @@ export const updateIncident = async (data) => {
       WHERE incident_id = $9
       RETURNING *, reported_at as created_at;
     `;
-    
+
     const values = [
-      title, type, severityInt, area_id, 
-      status, msg, latitude, longitude, 
+      title, type, severityInt, area_id,
+      status, msg, latitude, longitude,
       id
     ];
 
@@ -131,7 +131,7 @@ export const deleteIncident = async (id) => {
   try {
     const sql = 'DELETE FROM "INCIDENTS" WHERE incident_id = $1 RETURNING incident_id';
     const { rows } = await pool.query(sql, [id]);
-    
+
     return rows[0];
 
   } catch (error) {
@@ -154,7 +154,7 @@ export const searchIncidentsByAreaId = async (data) => {
       WHERE i.area_id = $1
     `;
     const params = [area_id];
-    
+
     if (status) {
       sql += ' AND i.status = $2';
       params.push(status);
@@ -163,10 +163,10 @@ export const searchIncidentsByAreaId = async (data) => {
     sql += ' ORDER BY i.reported_at DESC';
 
     const { rows } = await pool.query(sql, params);
-    
+
     return rows; //Incident list
 
-  } 
+  }
   catch (error) {
     console.error('Error searching incidents by area:', error);
     throw error;
@@ -177,34 +177,34 @@ export const searchIncidentsByAreaId = async (data) => {
  * Filter Incidents (General Purpose Filter)
  */
 export const filterIncidents = async (filters) => {
-    const { area_id, status } = filters;
-    try {
-        let sql = `
+  const { area_id, status } = filters;
+  try {
+    let sql = `
           SELECT i.*, i.reported_at as created_at, a.area_name 
           FROM "INCIDENTS" i
           LEFT JOIN "AREA" a ON i.area_id = a.area_id
           WHERE 1=1
         `;
-        const params = [];
-        let pIdx = 1;
+    const params = [];
+    let pIdx = 1;
 
-        if (area_id) {
-            sql += ` AND i.area_id = $${pIdx++}`;
-            params.push(area_id);
-        }
-        if (status) {
-            sql += ` AND i.status = $${pIdx++}`;
-            params.push(status);
-        }
-
-        sql += ' ORDER BY i.reported_at DESC';
-        
-        const { rows } = await pool.query(sql, params);
-        return rows;
-    } catch (error) {
-        console.error('Error filtering incidents:', error);
-        throw error;
+    if (area_id) {
+      sql += ` AND i.area_id = $${pIdx++}`;
+      params.push(area_id);
     }
+    if (status) {
+      sql += ` AND i.status = $${pIdx++}`;
+      params.push(status);
+    }
+
+    sql += ' ORDER BY i.reported_at DESC';
+
+    const { rows } = await pool.query(sql, params);
+    return rows;
+  } catch (error) {
+    console.error('Error filtering incidents:', error);
+    throw error;
+  }
 };
 
 /**
@@ -221,10 +221,10 @@ export const searchIncidentsByReporterId = async (data) => {
       WHERE i.reporter_id = $1
     `;
     const { rows } = await pool.query(sql, [reporter_id]);
-    
+
     return rows; //Incident list
 
-  } 
+  }
   catch (error) {
     console.error('Error searching incidents by reporter:', error);
     throw error;
@@ -243,8 +243,8 @@ export const getAllIncidents = async (pagination = {}) => {
     let countSql = 'SELECT COUNT(*) FROM "INCIDENTS" WHERE 1=1';
     const countParams = [];
     if (pagination.review_status) {
-        countSql += ' AND review_status = $1';
-        countParams.push(pagination.review_status);
+      countSql += ' AND review_status = $1';
+      countParams.push(pagination.review_status);
     }
     const countResult = await pool.query(countSql, countParams);
     const totalItems = parseInt(countResult.rows[0].count, 10);
@@ -258,13 +258,13 @@ export const getAllIncidents = async (pagination = {}) => {
       LEFT JOIN "AREA" a ON i.area_id = a.area_id
       WHERE 1=1
     `;
-    
+
     const params = [limit, offset];
     let paramIdx = 3;
 
     if (pagination.review_status) {
-        sql += ` AND i.review_status = $${paramIdx++}`;
-        params.push(pagination.review_status);
+      sql += ` AND i.review_status = $${paramIdx++}`;
+      params.push(pagination.review_status);
     }
 
     sql += `
@@ -272,7 +272,7 @@ export const getAllIncidents = async (pagination = {}) => {
       LIMIT $1 OFFSET $2
     `;
     const { rows } = await pool.query(sql, params);
-    
+
     return {
       data: rows,
       meta: {
@@ -320,7 +320,7 @@ export const reviewIncident = async (data) => {
       WHERE incident_id = $4
       RETURNING *;
     `;
-    
+
     const { rows } = await pool.query(sql, [reviewer_id, review_status, review_note, incident_id]);
     return rows[0];
 
@@ -355,7 +355,7 @@ export const getAllUnverifiedIncidents = async (pagination = {}) => {
       LIMIT $1 OFFSET $2
     `;
     const { rows } = await pool.query(sql, [limit, offset]);
-    
+
     return {
       data: rows,
       meta: {

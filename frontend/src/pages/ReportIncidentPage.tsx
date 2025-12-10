@@ -36,67 +36,67 @@ export function ReportIncidentPage() {
 
   useEffect(() => {
     import('../api/client').then(({ getAllAreas }) => {
-        getAllAreas().then(data => {
-            setAreas(data || [])
-            
-            // Build Hierarchy
-            const h: Record<string, any[]> = {}
-            data?.forEach((a: any) => {
-                // Assume first 3 chars is City (e.g. 台北市, 新北市)
-                const city = a.area_name.substring(0, 3)
-                if (!h[city]) h[city] = []
-                h[city].push(a)
-            })
-            setHierarchy(h)
-            setCities(Object.keys(h))
+      getAllAreas().then(data => {
+        setAreas(data || [])
 
-            // Default selection
-            if (data && data.length > 0) {
-                 // Don't auto-set random area, let user choose or use default
-            }
-        }).catch(console.error)
+        // Build Hierarchy
+        const h: Record<string, any[]> = {}
+        data?.forEach((a: any) => {
+          // Assume first 3 chars is City (e.g. 台北市, 新北市)
+          const city = a.area_name.substring(0, 3)
+          if (!h[city]) h[city] = []
+          h[city].push(a)
+        })
+        setHierarchy(h)
+        setCities(Object.keys(h))
+
+        // Default selection
+        if (data && data.length > 0) {
+          // Don't auto-set random area, let user choose or use default
+        }
+      }).catch(console.error)
     })
   }, [])
   /* eslint-enable */
 
   // Sync selectedCity when area_id changes (e.g. from auto-detect)
   useEffect(() => {
-      if (formData.area_id && areas.length > 0) {
-          const area = areas.find(a => a.area_id === formData.area_id)
-          if (area) {
-              const city = area.area_name.substring(0, 3)
-              setSelectedCity(city)
-          }
+    if (formData.area_id && areas.length > 0) {
+      const area = areas.find(a => a.area_id === formData.area_id)
+      if (area) {
+        const city = area.area_name.substring(0, 3)
+        setSelectedCity(city)
       }
+    }
   }, [formData.area_id, areas])
 
   const detectArea = async (lat: number, lng: number) => {
-      try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-              headers: { 'Accept-Language': 'zh-TW' }
-          })
-          const data = await res.json()
-          if (data && data.address) {
-              const city = (data.address.city || data.address.county || '').replace(/臺/g, '台')
-              const district = (data.address.suburb || data.address.town || data.address.district || '').replace(/臺/g, '台')
-              
-              if (city && district) {
-                  // Try exact match
-                  let match = areas.find(a => a.area_name === city + district)
-                  // If not found, try fuzzy or just city match?
-                  // For now, assume format [City][District]
-                  
-                  if (match) {
-                      setFormData(prev => ({ ...prev, area_id: match.area_id }))
-                      // alert(`已自動切換至：${match.area_name}`)
-                  } else {
-                      console.log('No matching area found for:', city + district)
-                  }
-              }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
+        headers: { 'Accept-Language': 'zh-TW' }
+      })
+      const data = await res.json()
+      if (data && data.address) {
+        const city = (data.address.city || data.address.county || '').replace(/臺/g, '台')
+        const district = (data.address.suburb || data.address.town || data.address.district || '').replace(/臺/g, '台')
+
+        if (city && district) {
+          // Try exact match
+          let match = areas.find(a => a.area_name === city + district)
+          // If not found, try fuzzy or just city match?
+          // For now, assume format [City][District]
+
+          if (match) {
+            setFormData(prev => ({ ...prev, area_id: match.area_id }))
+            // alert(`已自動切換至：${match.area_name}`)
+          } else {
+            console.log('No matching area found for:', city + district)
           }
-      } catch (err) {
-          console.error('Auto-detect area failed:', err)
+        }
       }
+    } catch (err) {
+      console.error('Auto-detect area failed:', err)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -201,52 +201,54 @@ export function ReportIncidentPage() {
             </div>
 
             <div className="space-y-2">
-                <Label>行政區</Label>
-                <div className="grid grid-cols-2 gap-4">
-                    <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        value={selectedCity}
-                        onChange={(e) => {
-                            const city = e.target.value
-                            setSelectedCity(city)
-                            // Auto select first district of new city
-                            if (city && hierarchy[city]?.length > 0) {
-                                setFormData(prev => ({ ...prev, area_id: hierarchy[city][0].area_id }))
-                            }
-                        }}
-                    >
-                        <option value="">選擇縣市</option>
-                        {cities.map(c => (
-                            <option key={c} value={c}>{c}</option>
-                        ))}
-                    </select>
+              <Label>行政區 <span className="text-xs font-normal text-muted-foreground">(由地圖座標自動判定)</span></Label>
+              <div className="grid grid-cols-2 gap-4">
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-slate-100 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 opacity-70 cursor-not-allowed"
+                  value={selectedCity}
+                  disabled={true}
+                  onChange={(e) => {
+                    const city = e.target.value
+                    setSelectedCity(city)
+                    // Auto select first district of new city
+                    if (city && hierarchy[city]?.length > 0) {
+                      setFormData(prev => ({ ...prev, area_id: hierarchy[city][0].area_id }))
+                    }
+                  }}
+                >
+                  <option value="">選擇縣市</option>
+                  {cities.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
 
-                    <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        value={formData.area_id}
-                        onChange={(e) => setFormData(prev => ({ ...prev, area_id: e.target.value }))}
-                    >
-                        {selectedCity && hierarchy[selectedCity]?.map(a => (
-                            <option key={a.area_id} value={a.area_id}>{a.area_name.replace(selectedCity, '')}</option>
-                        ))}
-                        {!selectedCity && <option value="">請先選擇縣市</option>}
-                    </select>
-                </div>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-slate-100 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 opacity-70 cursor-not-allowed"
+                  value={formData.area_id}
+                  disabled={true}
+                  onChange={(e) => setFormData(prev => ({ ...prev, area_id: e.target.value }))}
+                >
+                  {selectedCity && hierarchy[selectedCity]?.map(a => (
+                    <option key={a.area_id} value={a.area_id}>{a.area_name.replace(selectedCity, '')}</option>
+                  ))}
+                  {!selectedCity && <option value="">請先選擇縣市</option>}
+                </select>
+              </div>
             </div>
 
 
             <div className="space-y-2">
               <Label>地圖定位 (選擇座標)</Label>
-              <LocationPicker 
+              <LocationPicker
                 onLocationSelect={(lat, lng) => {
-                    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
-                    detectArea(lat, lng)
+                  setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
+                  detectArea(lat, lng)
                 }}
               />
               {formData.latitude && formData.longitude && (
-                 <p className="text-xs text-muted-foreground">
-                   已選擇座標: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
-                 </p>
+                <p className="text-xs text-muted-foreground">
+                  已選擇座標: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                </p>
               )}
             </div>
 
