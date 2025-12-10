@@ -30,7 +30,7 @@
 
 ### 簡報、報告數連結
 
-[簡報 PDF 連結](https://drive.google.com/file/d/1Nghhm6_7sjK0UfZSJt8uS9pG5N3JoKnv/view?usp=drive_link)、
+[簡報 PDF 連結](https://drive.google.com/file/d/1VWbE5piu8S7CSbpaB3PK-h7xyQOaLO7m/view?usp=sharing)、
 [報告書 PDF 連結](https://drive.google.com/file/d/1i7lqos9M4bzALCBmdqizV1LTjulo72po/view?usp=drive_link)
 
 ---
